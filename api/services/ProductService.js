@@ -476,10 +476,10 @@ module.exports = {
       let sort;
       switch (query.sort) {
         case 'views':
-          sort = ['ProductGm.pageView DESC','createdAt'];
+          sort = '`ProductGm.PageView.pageView` DESC, createdAt';
           break;
         case 'top':
-          sort = ['ProductGm.likesCount DESC','createdAt'];
+          sort = '`ProductGm.LikesCount.likesCount` DESC, createdAt';
           break;
         case 'newest':
           sort = 'createdAt';
