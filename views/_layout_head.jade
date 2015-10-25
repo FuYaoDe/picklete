@@ -3,9 +3,9 @@ html
   head
     meta(charset='utf-8')
     | &#x9;
-    title Platform - #{company.name}
+    title #{company.title} - #{company.name}
     // Mobile device set
-    meta(name='viewport', content='width=device-width, initial-scale=1.0')
+    meta(name='viewport', content='width=device-width, initial-scale=1.0', data-gatracking-id="#{locals.gaTrackingID}")
     // Fav and touch icons
     link(rel='shortcut icon', href='#{company.avatar}')
     // Style
@@ -40,16 +40,16 @@ html
             |         
             span.icon-bar
           |       
-          a.navbar-brand(href='/', style='background-image: url(#{company.avatar})') #{company.name}
+          a.navbar-brand(href='/') #{company.name}
         // /navbar-header
         // Collect the nav links, forms, and other content for toggling
         .collapse.navbar-collapse
           ul.nav.navbar-nav.navbar-right(aria-multiselectable='true')
             li
-              a.width-11.text-center(data-toggle='collapse', aria-expanded='true', href='#dropdown-menu-brands')
+              a.menu-brand.width-11.text-center(data-toggle='collapse', aria-expanded='true', href='#dropdown-menu-brands')
                 span.text-en BRANDS
                 |             
-                span.text-active 品牌介紹
+                span.text-active #{i18n('brands')}
               |           
               #dropdown-menu-brands.dropdown-menu-full.collapse
                 .container.p-top-4.p-bottom-4
@@ -68,7 +68,7 @@ html
                           |     
                   // /clearfix
                   .clearfix.m-bottom-2
-                    h4.text-gray-darker.m-bottom-4 精選品牌
+                    h4.text-gray-darker.m-bottom-4 #{i18n('prime-brand')}
                     |   
                     ul.list-inline.list-brand
 
@@ -82,21 +82,21 @@ html
                 // /container
               // /dropdown-menu
             |         
-            //- li
-            //-   a.width-10.text-center(href='http://blog.XXXXXX.com/')
-            //-     span.text-en BLOG
-            //-     |             
-            //-     span.text-active 生活誌
-            //- |   
             li
-              a.width-10.text-center(href='/shop/products')
+              a.menu-blog.width-10.text-center(href='#{company.blog}')
+                span.text-en BLOG
+                |             
+                span.text-active 生活誌
+            |   
+            li
+              a.menu-shop.width-10.text-center(href='/shop/products')
                 span.text-en SHOP
                 |             
-                span.text-active 線上購物
+                span.text-active #{i18n('shop')}
             - if (user)
               |         
               li.dropdown
-                a.dropdown-toggle.width-11.text-center(href='#', data-toggle='dropdown', role='button', aria-haspopup='true', aria-expanded='false')
+                a.menu-member.dropdown-toggle.width-11.text-center(href='#', data-toggle='dropdown', role='button', aria-haspopup='true', aria-expanded='false')
                   span.text-en ACCOUNT
                   |             
                   span.text-active 會員中心
@@ -118,7 +118,7 @@ html
             - if ( ! user)
               |         
               li
-                a.width-12.text-center(href='#', data-toggle='modal', data-target='#modal-login')
+                a.menu-member.width-12.text-center(href='#', data-toggle='modal', data-target='#modal-login')
                   span.glyphicon.glyphicon-user.font-size-slarge
                   |             
                   span.text-en LOGIN
@@ -127,7 +127,7 @@ html
             - if (true || user)
               |         
               li.dropdown.icon-link
-                a.dropdown-toggle(href='#', data-toggle='dropdown', role='button', aria-haspopup='true', aria-expanded='false')
+                a.menu-cart.dropdown-toggle(href='#', data-toggle='dropdown', role='button', aria-haspopup='true', aria-expanded='false')
                   span.glyphicon.glyphicon-shopping-cart.m-right-1.font-size-slarge
                   span.text-green 
                     span#order-items-count 0
@@ -144,8 +144,8 @@ html
                 search
                 ==================================================
               #sb-search.sb-search
-                form
-                  input#search.sb-search-input.form-control(placeholder='Search for...', type='text', value='', name='search')
+                form(action='/search')
+                  input#search.sb-search-input.form-control(placeholder='Search for...', type='text', value='', name='q')
                   |     
                   input.sb-search-submit(type='submit', value='')
                   |     
@@ -161,17 +161,30 @@ html
       a.navmenu-brand(href='/') #{company.name}
       |   
       ul.nav.navmenu-nav.navmenu-nav-top
+
         li
-          a(href='brands-list') BRANDS
+          a(href='/brands/list') BRANDS
         |     
         //- li
         //-   a(href='http://blog.xxxxx.com/') BLOG
         //- |     
-        li.dropdown
-          a.dropdown-toggle(href='#', data-toggle='dropdown')
-            | SHOP
-            span.glyphicon.glyphicon-chevron-down.m-left-1
-          |       
+        li
+          a(href='#{company.blog}')
+            |BLOG
+
+
+        //- li
+        //-   a(href='brands-list') BRANDS
+        //- | 
+        li
+          a(href='/shop/products') SHOP
+        |    
+        //- |     
+        //- li.dropdown
+        //-   a.dropdown-toggle(href='/shop/products', data-toggle='dropdown')
+        //-     | SHOP
+        //-     span.glyphicon.glyphicon-chevron-down.m-left-1
+        //-   |       
           //- ul.dropdown-menu.navmenu-nav(role='menu')
             li
               a(href='shop/products') 新品上市
@@ -201,17 +214,18 @@ html
               a(href='shop/products') 特別企劃
             |         
             li
-              a.btn.btn-default(href='brands-list-shop') 品牌列表
+              a.btn.btn-default(href='brands-list-shop') #{i18n("brand-list")}
         |     
         li
-          a(href='login')
+          a(href='/user/login')
             span.glyphicon.glyphicon-user.m-right-1
             | LOGIN
         |     
         li
-          a(href='user/cart')
+          a(href='/user/cart')
             span.glyphicon.glyphicon-shopping-cart.m-right-1
-            span.text-green 5
+            span.text-green
+              span#order-items-count 0
         |     
         li
           .input-group.m-bottom-2.m-top-2
@@ -249,10 +263,10 @@ html
         #bs-example-navbar-collapse-1.collapse.navbar-collapse
           ul.nav.navbar-nav.navbar-right(aria-multiselectable='true')
             li
-              a.text-center(href='index') 登出
+              a.text-center(href='/logout') 登出
             |         
             li
-              a.text-center(href='control-password') 修改密碼
+              a.text-center(href='/member/setting') 修改密碼
         // /navbar-collapse
       // /container
     // /navbar-fixed-top
@@ -263,6 +277,7 @@ html
         .alert.alert-danger(role='alert')
           p 表單送出填寫有誤，請確認填入資料
           p(style="display:none;")= flash
+    
     
     block body
 
@@ -293,10 +308,10 @@ html
   script(type='text/javascript' src='/javascripts/user/login.js')
   script(type='text/javascript' src='/bower/js-cookie/js.cookie.js')
   script(type='text/javascript' src='/bower/jquery.serializeJSON/jquery.serializejson.js')
-
+  script(src="/javascripts/main/shop.js")
   script.
     window.USER = !{JSON.stringify(user)};
 
   block js
     //- //ＢＵＧ 放shop裡不行
-  //- script(src="/javascripts/main/shop.js")
+    //- script(src="/javascripts/main/shop.js")

@@ -27,7 +27,7 @@ module.exports = {
     }
 
     let newProductGm = {
-      brandId: brandId,
+      BrandId: brandId,
       name: updateProduct.name,
       brandName: brandName,
       explain: updateProduct.explain || "",
@@ -209,7 +209,7 @@ module.exports = {
         } // end if
       } // end for
 
-      productGm.brandId = brand.id;
+      productGm.BrandId = brand.id;
       productGm.name = updateProduct.name;
       productGm.dptId = updateProduct.dptId;
       productGm.dptSubId = updateProduct.dptSubId;
@@ -245,8 +245,8 @@ module.exports = {
       });
       // lets delete all of them.
       if(findProducts.length>0){
-        let deleteProducts = await* findProducts.map((product) => {
-          product.destroy();
+        let deleteProducts = await* findProducts.map(async (product) => {
+          return await product.destroy();
         });
       }
       // delete productGm
@@ -353,27 +353,58 @@ module.exports = {
   },
 
   productQuery: async (query, offset = 0, limit = 2000) => {
-    let queryObj = {},
-        queryGmObj = {},
-        resultProducts;
+
+    let queryObjArray = [],
+        queryObj = {},
+        GmQueryObj = {},
+        DptQueryObj = {},
+        DptSubQueryObj = {},
+        ProductQueryObj = {},
+        resultProducts = [];
 
     try {
+
       if (Object.keys(query).length > 0) {
-        // search condition
+        // ================ ProductGm query condition ================
+        if (query.name) {
+          GmQueryObj.name = {
+              $like: `%${query.name}%`
+          }
+        }
+
+        if (query.brandId > 0)
+          GmQueryObj.brandId = query.brandId;
+
+        if (query.tag) {
+          GmQueryObj.tag = {
+            $like: `%${query.tag}%`
+          };
+        }
+
+        // ================ Dpt query condition ================
+        if (query.dptId > 0 ) {
+          DptQueryObj.id = query.dptId;
+        }
+        // ================ DptSub query condition ================
+        if (query.dptSubId > 0 ) {
+          DptSubQueryObj.id = query.dptSubId;
+        }
+        // ================ Product query condition =============
+
         if (query.price) {
-          queryObj.price = query.price;
+          ProductQueryObj.price = query.price;
         }
 
         if (query.productNumber) {
-          queryObj.productNumber = query.productNumber;
+          ProductQueryObj.productNumber = query.productNumber;
         }
         // 存貨數量搜尋條件
         if (query.stockQuantityStart && query.stockQuantityEnd) {
-          queryObj.stockQuantity = {
+          ProductQueryObj.stockQuantity = {
             $between: [query.stockQuantityStart, query.stockQuantityEnd]
           };
         } else if (query.stockQuantityStart || query.stockQuantityEnd) {
-          queryObj.stockQuantity = query.stockQuantityStart ? {
+          ProductQueryObj.stockQuantity = query.stockQuantityStart ? {
             $gte: query.stockQuantityStart
           } : {
             $lte: query.stockQuantityEnd
@@ -381,16 +412,21 @@ module.exports = {
         }
         // 日期搜尋條件
         if (query.dateFrom && query.dateEnd) {
-          queryObj.createdAt = {
+          ProductQueryObj.createdAt = {
             $between: [new Date(query.dateFrom), new Date(query.dateEnd)]
           };
         } else if (query.dateFrom || query.dateEnd) {
-          queryObj.createdAt = query.dateFrom ? {
+          ProductQueryObj.createdAt = query.dateFrom ? {
             $gte: new Date(query.dateFrom)
           } : {
             $lte: new Date(query.dateEnd)
           };
         }
+
+        if (query.color) {
+          ProductQueryObj.color = query.color;
+        }
+
 
         // 販售狀態 1:隱藏, 2:上架
         if (query.isPublish != '') {
@@ -399,111 +435,87 @@ module.exports = {
 
         // productGm 搜尋
         if (query.brandId > 0)
-          queryGmObj.brandId = query.brandId;
+          queryObj.BrandId = query.brandId;
 
         // tag keyword search
         if (query.tag) {
-          queryGmObj.tag = {
+          queryObj.tag = {
             $like: '%' + query.tag + '%'
           };
         }
-      }
 
-      // execute query
+        if (typeof query.isPublish != 'undefined') {
+          ProductQueryObj.isPublish = (query.isPublish == 'false') ? null : true;
+        }
+      }
+      // ================ merge queryObj ================
       queryObj = {
-        where: queryObj,
-        include: [db.ProductGm],
-        limit: limit,
+        subQuery: false,
+        where: ProductQueryObj,
+        include: [{
+          model: db.ProductGm,
+          where: GmQueryObj,
+          include:[{
+            model: db.Dpt,
+            where: DptQueryObj
+          },{
+            model: db.DptSub,
+            where: DptSubQueryObj
+          },{
+            model: db.Brand
+          },{
+            model: db.PageView
+          },{
+            model: db.LikesCount
+          }]
+        }],
         offset: offset,
+        limit: limit,
       };
 
-      let products = await db.Product.findAll(queryObj);
-
-      queryGmObj = {
-        where: queryGmObj,
-        include: [db.Product, db.Dpt, db.DptSub]
-      };
-      let productGms = await db.ProductGm.findAll(queryGmObj);
-
-      // 過濾館別，將productGm 搜尋結果的id取出
-      let gmResultId = [];
-      for (let productGm of productGms) {
-        for (let product of productGm.Products) {
-          gmResultId.push(product.id);
-        }
-      }
-      if (query.dptId > 0 || query.dptSubId > 0 ) {
-        gmResultId = [];
-        for (let productGm of productGms) {
-          let dptPass = true, dptSubPass = true;
-          if( query.dptId > 0 ) {
-            for (let dptSub of productGm.DptSubs) {
-              let dptId = dptSub.DptId;
-              if( typeof dptId !== 'undefined' ) {
-                if ( dptId != query.dptId ) {
-                  dptPass = false;
-                }
-              }
-              else {
-                console.log('ProductGmId: ' + productGm.id + ' has not set dpt yet ');
-              }
-            }
-          }
-          if (query.dptSubId > 0) {
-            for (let dptSub of productGm.DptSubs) {
-              let dptSubId = dptSub.id;
-              if( typeof dptSubId !== 'undefined' ) {
-                if( dptSubId != query.dptSubId )
-                  dptSubPass = false;
-              }
-              else{
-                console.log('ProductGmId: ' + productGm.id + ' has not set dptSub yet ');
-              }
-            }
-          }
-          if(dptPass && dptSubPass) {
-            for (let gmProduct of productGm.Products) {
-              gmResultId.push(gmProduct.id);
-            }
-          }
-        }
-      }
-      let ttt = [];
-      for (let product of products) {
-        ttt.push(product.id);
+      let sort;
+      switch (query.sort) {
+        case 'views':
+          sort = [[db.ProductGm,db.PageView,'pageView','DESC']];
+          break;
+        case 'top':
+          sort = [[db.ProductGm,db.LikesCount,'likesCount','DESC']];
+          break;
+        case 'newest':
+          sort = 'createdAt';
+          break;
+        case 'priceHtoL':
+          sort = 'price DESC';
+          break;
+        case 'priceLtoH':
+          sort = 'price';
+          break;
       }
 
-      // productGm 搜尋結果 與 product 搜尋結果 mapping
-      let mappingResult = [];
-      for (let product of products) {
-        if (gmResultId.indexOf(product.id) != -1) {
-          mappingResult.push(product);
-        }
-      }
+      if(sort)
+        queryObj.order = sort;
 
-      products = mappingResult;
 
-      // name filter
-      if(query.name) {
-        products = [];
-        for (let product of mappingResult) {
-          if( (product['name'].search(query.name) > 0 ) || (product['ProductGm']['name'].search(query.name) > 0) )
-            products.push(product);
-        }
-      }
+      sails.log.info("=== productQuery queryObj ===",queryObj);
 
+      // console.log(' ======== queryObj =========');
+      // console.log(ProductQueryObj);
+      // console.log(GmQueryObj);
+      let products = await db.Product.findAndCountAll(queryObj);
+      sails.log.info("=== productQuery products ===",products.rows[0].dataValues);
       // format datetime
-      products = products.map(ProductService.withImage);
-      for (let product of products) {
+      products.rows = products.rows.map(ProductService.withImage);
+      for (let product of products.rows) {
         product.createdAt = moment(product.createdAt).format("YYYY/MM/DD");
       }
-      resultProducts = products;
 
+      resultProducts = products;
+      // console.log(JSON.stringify(resultProducts,null,4));
     } catch (error) {
       console.error(error.stack);
       // let msg = error.message;
       // return res.serverError({msg});
     }
-    return {rows: resultProducts, count: resultProducts.length };
+    return {rows: resultProducts.rows, count: resultProducts.count };
   }
 };

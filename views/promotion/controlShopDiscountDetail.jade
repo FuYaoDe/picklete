@@ -1,24 +1,26 @@
 extends ../_layout_auth
+include ../mixins/pagination
 
 block body
-  h2.m-bottom-6 閃購活動設定
+  h2.m-bottom-6 閃購活動
   .well.control-well.p-30.m-bottom-8
-    form.form-horizontal
+    form#shopDiscount.form-horizontal(action="/admin/shopDiscount/create", method="post")
+      input(type='hidden', name='type', value='flash', form='shopDiscount')
+      input.form-control(type='hidden',name='id',form='shopDiscount' value= query.id)
       .form-group
         label.col-sm-3.col-md-2.control-label 活動名稱
         .col-sm-9.col-md-10
-          input.form-control(type='text')
+          input.form-control(type='text',name='title',form='shopDiscount' value= promotion.title)
         // /col-sm-10
-      // /form-group
+
       .form-group
         label.col-sm-3.col-md-2.control-label 活動主圖
         .col-sm-9.col-md-10
           .max-width-150
-            //
-              fileinput-img-square
-              ==================================================
+
             .fileinput.fileinput-new(data-provides='fileinput')
-              .fileinput-new.dashed-block-2.fileinput-square
+              .fileinput-new.fileinput-square
+                img.img-full(src=promotion.coverPhoto ? promotion.coverPhoto : src='http://fakeimg.pl/150x150/dddddd/FFF/?text=cover')
               // /fileinput-new
               .fileinput-preview.fileinput-exists.border-block-1
               // /fileinput-preview
@@ -26,7 +28,22 @@ block body
                 span.btn.btn-default.btn-sm.btn-file
                   span.fileinput-new Select image
                   span.fileinput-exists Change
-                  input(type='file', name='...')
+                  input.fileInput(type='file', name="uploadfile", data-name='coverPhoto[]')
+                  input(type='hidden', name="filename", value='coverPhoto[]')
+                  input(type='hidden', name="width", value='150')
+                  input(type='hidden', name="height", value='150')
+                  input(type='hidden', name='coverPhoto[]', form='shopDiscount', value='')
+                a.btn.btn-default.btn-sm.fileinput-exists(href='#', data-dismiss='fileinput') Remove
+
+            //
+              fileinput-img-square
+              ==================================================
+            //      
+              .fileinput-btn
+                span.btn.btn-default.btn-sm.btn-file
+                  span.fileinput-new Select image
+                  span.fileinput-exists Change
+                  input(type='file', name='...', form='shopDiscount')
                 a.btn.btn-default.btn-sm.fileinput-exists(href='#', data-dismiss='fileinput') Remove
               // /fileinput-btn
             // /fileinput
@@ -36,63 +53,91 @@ block body
         // /col-sm-10
       // /form-group
       .form-group
-        label.col-sm-3.col-md-2.control-label 活動時間
-        .col-sm-4.col-md-3
-          input.form-control(type='datetime-local')
+        label.col-sm-3.col-md-2.control-label 活動起始時間
+        .col-sm-9.col-md-5
+          if (promotion.endDate)
+            input.form-control(type='date',name='startDate',form='shopDiscount',value= sails.moment(promotion.startDate).format('YYYY-MM-DD'))
+          else
+            input.form-control(type='date',name='startDate',form='shopDiscount',disabled)
         .col-sm-1.col-md-1.p-left-0.p-right-0.text-center
-          p.form-control-static 至
-        .col-sm-4.col-md-3
-          input.form-control(type='datetime-local')
-        .col-sm-9.col-sm-offset-3.col-md-3.col-md-offset-0
+
+      .form-group
+        label.col-sm-3.col-md-2.control-label 活動結束時間
+        .col-sm-9.col-md-5
+          if (promotion.endDate)
+            input.form-control(type='date',name='endDate',form='shopDiscount',value= sails.moment(promotion.endDate).format('YYYY-MM-DD'))
+          else
+            input.form-control(type='date',name='endDate',form='shopDiscount',disabled)
+      
+      .form-group
+        label.col-sm-3.col-md-2.control-label
+        .col-sm-9.col-md-5      
           .checkbox
             label
-              input(type='checkbox')
+              if (promotion.endDate)
+                input(type='checkbox')#noTimeLimit
+              else
+                input(type='checkbox', checked='true')#noTimeLimit
               |  不限時
-      // /form-group
+
       .form-group
         label.col-sm-3.col-md-2.control-label 折扣設定
         .col-sm-4.col-md-3
           .radio
             label
-              input#optionsRadios1(type='radio', name='optionsRadios', value='option1', checked='')
-              input.form-control(type='text', placeholder='請輸入折扣金額')
+              -if( promotion.discountType=='price' )
+                input#optionsRadios1(type='radio', name='discountType', value='price', checked='',form='shopDiscount')
+              -else
+                input#optionsRadios1(type='radio', name='discountType', value='price',form='shopDiscount')
+              input.form-control(type='text',name='price', placeholder='請輸入折扣金額',form='shopDiscount',value= promotion.price)
         .col-sm-1.col-md-1
         .col-sm-4.col-md-3
           .radio
             label
-              input#optionsRadios2(type='radio', name='optionsRadios', value='option2')
+              -if( promotion.discountType=='discount' )
+                input#optionsRadios2(type='radio', name='discountType', value='discount', checked='',form='shopDiscount')
+              -else
+                input#optionsRadios2(type='radio', name='discountType', value='discount',form='shopDiscount')
               .input-group.width-12
-                input.form-control(type='text')
+                input.form-control(type='text',name='discount',form='shopDiscount',value= promotion.discount)
                 span.input-group-addon 折
               // /input-group
       // /form-group
       .form-group
         label.col-sm-3.col-md-2.control-label 活動文案
         .col-sm-9.col-md-10
-          textarea.form-control(rows='3')
+          textarea.form-control(rows='3',form='shopDiscount',name='description') #{promotion.description}
         // /col-sm-9
       // /form-group
       .m-top-6.text-right
-        a.btn.btn-link.delete-link.btn-lg(href='#', data-toggle='modal', data-target='#modal-delete') 刪除
-        a.btn.btn-green.btn-lg(href='#') 確定
+        a.btn.btn-link.delete-link.btn-lg(href='shop-discount') 取消
+        button#add.btn.btn-green.btn-lg(form='shopDiscount') 確認
       // /text-right
   // /well
   .row
-    .col-md-6
+    .col-md-4
       form.form-inline
         .form-group
           label 顯示
-          select.form-control
-            option 10
-            option 20
-            option 30
-            option 40
-            option 50
-          label 筆資料（共 90 筆）
+            +pagination-limit
         // /form-group
     // /col-md-6
-    .col-md-6.desktop-text-right
-      a.btn.btn-green(href='shop-discount-add-item') 加入折扣商品
+    .col-md-8.desktop-text-right
+      form#search.form-inline.with-pagination(name="search", action="shop-discount-detail", method="get")
+        .form-group.m-right-2
+          label 品牌名稱
+          select.form-control(name='brand',form='search' , value = query.brand?query.brand: 0)
+            option(value=0 selected=(query.brand==0)) 品牌名稱
+            each brand in brands
+              option(value=brand.id selected=(query.brand==brand.id)) #{brand.name}
+        // /form-group
+        .form-group.m-right-2
+          .input-group
+            input#keyword.form-control(type='text',name="keyword",form='search',placeholder='輸入關鍵字',value= query.keyword)
+            +pagination-fields(page, totalPages, limit)
+            span.input-group-btn
+              button.btn.btn-default.p-left-2.p-right-2(type='button', onClick='$("form[name=\'search\']").submit()')
+                span.glyphicon.glyphicon-search
     // /col-md-6
   // /row
   hr.dashed-line
@@ -100,8 +145,7 @@ block body
     thead
       tr
         th
-          | 類型
-          span.caret
+          input(type='checkbox')
         th 主圖
         th
           | 商品名稱
@@ -117,56 +161,35 @@ block body
           span.caret
         th
     tbody
-      tr
-        td
-          span.label.label-default 閃購
-        td
-          img.width-6(src='images/demo/shop-item-1-1.jpg')
-        td {product_name}
-        td JC1129
-        td 590
-        td
-          span.text-danger 413
-        td.text-right
-          a.btn.btn-link.delete-link(href='#', data-toggle='modal', data-target='#modal-delete')
-            span.glyphicon.glyphicon-remove
-      tr
-        td
-          span.label.label-default 閃購
-        td
-          img.width-6(src='images/demo/shop-item-2-1.jpg')
-        td {product_name}
-        td JC1129
-        td 590
-        td
-          span.text-danger 413
-        td.text-right
-          a.btn.btn-link.delete-link(href='#', data-toggle='modal', data-target='#modal-delete')
-            span.glyphicon.glyphicon-remove
-      tr
-        td
-          span.label.label-default 閃購
-        td
-          img.width-6(src='images/demo/shop-item-3-1.jpg')
-        td {product_name}
-        td JC1129
-        td 590
-        td
-          span.text-danger 413
-        td.text-right
-          a.btn.btn-link.delete-link(href='#', data-toggle='modal', data-target='#modal-delete')
-            span.glyphicon.glyphicon-remove
+      each product in products.rows
+        tr
+          td
+            //- each promotedProduct in promotion.Products
+            -if(product.promoted)
+              input.addSelect(type='checkbox' , checked='',value= product.id)
+            -else
+              input.addSelect(type='checkbox' ,value= product.id)
+          td
+            img.width-6(src= product.photos[0])
+          td= product.name
+          td= product.productNumber
+          if (product.originPrice)
+            td= product.originPrice
+          else
+            td= product.price
+          td
+            span.text-danger= product.price
+          td.text-right
+            a.btn.btn-link.delete-link(href='#', data-toggle='modal', data-target='#modal-delete')
+              span.glyphicon.glyphicon-remove
   hr.dashed-line
   .text-center
     //
       pagination-block
       ==================================================
     ul.list-inline.m-bottom-0.m-top-1
-      li.border-right-1.p-right-2
-        a(href='#') 上一頁
-      li.border-right-1.p-right-2 第 15 之 20
-      li
-        a(href='#') 下一頁
+      +pagination-simple-pager(page, totalPages)
   // /text-center
 block js
-  script(src="/javascripts/admin/discount.js")
+  script(src='/javascripts/common/pagination.js')
+  script(src="/javascripts/admin/shopDiscount.js")

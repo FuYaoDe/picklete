@@ -17,19 +17,24 @@ http://sailsjs.org/#/documentation/reference/sails.config/sails.config.policies.
 ###
 module.exports.policies = {
 
-  '*': ['global', 'loginRequired']
+  '*': ['global', 'loginRequired', 'cookieRequired']
   'AuthController': ['global', 'passport']
 
   'UserController':
-    controlLogin: ['global']
-    cart: []
+    controlLogin: ['global', 'cookieRequired']
+    cart: ['global', 'cookieRequired', 'mailRequired']
+    loginStatus:['global','cookieRequired']
+    update: ['passport']
+    verify: true
+    updatefavorite: []
 
-  'MainController': ['global']
+  'MainController': ['global', 'mailRequired', 'cookieRequired']
 
   'ShopController':
-    show: ['global']
-    list: ['global']
-    cartStep2: ['global']
+    show: ['global', 'cookieRequired']
+    list: ['global', 'cookieRequired']
+    done: ['global', 'cookieRequired']
+    cartStep2: ['global', 'cookieRequired']
 
   'AboutController':
     show: ['global']
@@ -45,12 +50,14 @@ module.exports.policies = {
 
   'BrandController':
     show: ['global']
+    resetWeight: []
+    listView: ['global']
   # 'admin/*': ['passport', 'loginRequired']
 
   # ProductController:
   #   list: ['loginRequired']
   'OrderController':
-  #   index: ['loginRequired']
+    index: ['loginRequired']
   #   paymentConfirm: []
   #   paymentConfirmSave: []
     create: []
@@ -65,6 +72,12 @@ module.exports.policies = {
 
   'ShippingController':
     type: []
+
+  'PromotionController':
+    create: []
+
+  'ShopCodeController':
+    checkCode: []
 
   # #'/api/search/*': []
   # SearchController:

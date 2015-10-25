@@ -1,17 +1,32 @@
 (function ($) {
 
+  $.urlParam = function(name) {
+    var results = new RegExp('[\?&amp;]' + name + '=([^&amp;#]*)').exec(window.location.href);
+    return results ? results[1] : false;
+  };
+
   var FAV_KEY = "picklete_fav";
+
+  var dptDisplay = function (id) {
+    //正式上線後要依據大館別固定數量更改
+    for(i=1; i<=9; i++) {
+      if(document.getElementById('subDpt' + i))
+        document.getElementById('subDpt' + i).className="tab-pane fade";
+    }
+    document.getElementById('subDpt' + id).className="tab-pane fade in active";
+    $('.tab-pane.fade.in.active').css("display","none");
+    $('.tab-pane.fade.in.active').fadeIn();
+  }
+
+  // when page is loaded, need to display sub menu
+  var dptId = $.urlParam('dptId');
+  if (dptId)
+    dptDisplay(dptId);
 
   $('.dpt').on("click", function(e){
     var e = $(event.currentTarget);
-    //正式上線後要依據大館別固定數量更改
-    for(i=1; i<=9; i++) {
-      document.getElementById('subDpt' + i).className="tab-pane fade";
-    }
-    document.getElementById('subDpt' + e.data('id')).className="tab-pane fade in active";
-    $('.tab-pane.fade.in.active').css("display","none");
-    $('.tab-pane.fade.in.active').fadeIn();
-
+    var id = e.data('id');
+    dptDisplay(id);
   });
 
   // add to favorite
@@ -38,7 +53,19 @@
       favs[productId] = true;
     }
 
-    Cookies.set(FAV_KEY, favs, { expires: 90 });
+    Cookies.set(FAV_KEY, favs, { expires: 2592000 });
+
+    $.ajax({
+      url : '/favorite/add',
+      type: "post",
+      success:function(data, textStatus, jqXHR)
+      {
+        console.log(data);
+      },
+      error: function (jqXHR, exception) {
+        console.log(jqXHR);
+      }
+    });
 
   });
 
@@ -58,7 +85,7 @@
       delete favs[productId];
     }
 
-    Cookies.set(FAV_KEY, favs, { expires: 90 });
+    Cookies.set(FAV_KEY, favs, { expires: 2592000 });
     $(target).parent().parent().remove();
 
   });
@@ -96,30 +123,62 @@
       picklete_cart = JSON.parse(picklete_cart);
     }
 
+    var productGmId = $(this).attr("data-productGmId");
     var productId = $(this).attr("data-productId");
     var quantity = $('input[name="quant[1]"]').val() || 1;
-    var price = $('#price').text();
+    var price = $(this).attr("data-price");
     var photos = JSON.parse($(this).attr("data-photos"));
     var brand = $(this).attr("data-brand");
+    var brandname = $(this).attr("data-brandname") || "";
     var name = $(this).attr("data-name") || "";
+    var originPrice = $('#originPrice').text();
+    var packable;
+    var expressable;
 
+    if($("#service-3").hasClass('disabled'))
+      packable = false;
+    else
+      packable = true;
 
+    if($("#service-2").hasClass('disabled'))
+      expressable = false;
+    else
+      expressable = true;
 
     console.log('=== picklete_cart ===', picklete_cart);
     console.log('=== productId ===', productId);
     console.log('=== quantity ===', quantity);
     console.log('=== price ===', price);
+    console.log('=== packable ===',packable);
 
     var addProduct = {
+      productGmId: productGmId,
       ProductId: productId,
       quantity: quantity,
+      brandname: brandname,
       price: price,
       brand: brand,
       name: name,
-      photos: photos
+      photos: photos,
+      originPrice: originPrice,
+      packable: packable,
+      expressable: expressable
     }
 
-    picklete_cart.orderItems.push(addProduct);
+    // check product is added, it will added to same data
+    var isTheSame = false;
+    for(var orderItem of picklete_cart.orderItems) {
+      if(orderItem.ProductId == addProduct.ProductId) {
+        isTheSame = true;
+        orderItem.quantity = (parseInt(orderItem.quantity,10) + parseInt(addProduct.quantity,10)).toString();
+        break;
+      }
+    }
+
+    if( !isTheSame ) {
+      picklete_cart.orderItems.push(addProduct);
+    }
+
     Cookies.set('picklete_cart', picklete_cart);
     dropdownCartInit();
 
@@ -153,17 +212,16 @@
         '    </div>' +
 
         '    <div class="col-xs-8 p-left-0">' +
-        '      <h6 class="text-muted"><a href="/brands">'+orderItem.brand+'</a></h6>' +
-        '      <h5><a href="shop-product">'+orderItem.name+'</a></h5>' +
+        '      <h6 class="text-muted"><a href="/brands">'+orderItem.brandname+'</a></h6>' +
+        '      <h5><a href="/shop/products/'+orderItem.productGmId+'/'+orderItem.ProductId+'">'+orderItem.brand+"-"+orderItem.name+'</a></h5>' +
         '      <h5>$ '+orderItem.price+'</h5>' +
         '    </div>' +
         '  </div>' +
         '</li>';
 
-      totalPrice += parseInt(orderItem.price, 10);
+      totalPrice += parseInt(orderItem.price*orderItem.quantity, 10);
 
       dropdownCart.append(liOrderItem);
-
 
     });
 
@@ -190,6 +248,16 @@
   dropdownCartInit();
 
 
+  if($("#verification").attr("data-verification")){
+    $(this).notifyMe(
+      'top',
+      'cart',
+      '<span class="glyphicon glyphicon-ok-circle m-right-2"></span>帳號已開通',
+      '',
+      500,
+      3000
+    );
+  }
 
 
 

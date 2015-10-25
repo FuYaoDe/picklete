@@ -1,4 +1,5 @@
 extends ../_layout_head
+include ../mixins/pagination
 
 block body
     .mobile-hide
@@ -14,12 +15,12 @@ block body
       // /container
       #dropdown-menu-brands-3.dropdown-menu-full.collapse
         .container.p-top-4.p-bottom-4
-          h2.text-center.text-gray-darker 品牌列表
+          h2.text-center.text-gray-darker #{i18n("brand-list")}
           //
             dropdown-menu-brands-shop
             ==================================================
           .clearfix.m-bottom-2.text-left
-            h4.text-gray-darker.m-bottom-4 代理品牌
+            h4.text-gray-darker.m-bottom-4 #{i18n('agent-brand')}
             ul.list-inline.list-brand
               each brand, idx in brands
                 - if (brand.type === 'AGENT')
@@ -28,7 +29,7 @@ block body
                       img.border-block-1.img-full(src=brand.avatar)
           // /clearfix
           .clearfix.m-bottom-2
-            h4.text-gray-darker.m-bottom-4 精選品牌
+            h4.text-gray-darker.m-bottom-4 #{i18n('prime-brand')}
             ul.list-inline.list-brand
               each brand, idx in brands
                 - if (brand.type === 'PRIME_GOOD')
@@ -46,113 +47,131 @@ block body
             - if (dpt.DptSubs.length)
               .tab-pane.fade(id = "subDpt"+dpt.id)
                   ul.list-inline.list-shop-type-sm.font-size-small
+                    li.active.subDpt
+                      a(href='?dptId=#{dpt.id}')
+                        | 所有商品                 
                     each subDpt, index in dpt.DptSubs
-                      li(class= (index==0)? "active subDpt" : "subDpt" data-id='#{subDpt.id}') 
-                        a(href='?dptSubId=#{subDpt.id}&dptId=#{dpt.id}')
+                      li(class="subDpt",data-id='#{subDpt.id}&sort=#{sort}') 
+                        a(href='?dptSubId=#{subDpt.id}&dptId=#{dpt.id}&sort=#{sort}')
                           | #{subDpt.name}
           // /list-shop-type-9
         // /tab-content
       // /container
     // /gray-lighter
     .container
-      .m-top-8.m-bottom-8
-        //
-          shop-filter
-          ==================================================
-        .btn-group
-          button.btn.btn-default.border-radius-circle.dropdown-toggle(type='button', data-toggle='dropdown', aria-haspopup='true', aria-expanded='false')
-            span.glyphicon.glyphicon-list.m-right-1
-            | 預設排序
-          ul.dropdown-menu.width-210.m-top-2.p-top-2.p-bottom-2
-            li
-              a(href='#')
-                | 受關注度優先
-                span.glyphicon.glyphicon-chevron-thin-right.pull-right
-            li
-              a(href='#')
-                | 熱門收藏優先
-                span.glyphicon.glyphicon-chevron-thin-right.pull-right
-            li
-              a(href='#')
-                | 最新上架優先
-                span.glyphicon.glyphicon-chevron-thin-right.pull-right
-            li
-              a(href='#')
-                | 價格由高至低
-                span.glyphicon.glyphicon-chevron-thin-right.pull-right
-            li
-              a(href='#')
-                | 價格由低至高
-                span.glyphicon.glyphicon-chevron-thin-right.pull-right
-            li.p-8-30
-              | 顏色：
-              br
-              a.color-filter.color-red(href='#')
-              a.color-filter.color-orange(href='#')
-              a.color-filter.color-yellow(href='#')
-              a.color-filter.color-green(href='#')
-              a.color-filter.color-blue(href='#')
-              a.color-filter.color-purple(href='#')
-              a.color-filter.color-deeppink(href='#')
-              a.color-filter.color-pink(href='#')
-              a.color-filter.color-black(href='#')
-              a.color-filter.color-gray(href='#')
-              a.color-filter.color-graylight(href='#')
-              a.color-filter.color-gold(href='#')
-              a.color-filter.color-brown(href='#')
-              a.color-filter.color-mix(href='#')
-          // /dropdown-menu
-        // /btn-group
-        // /m-top-8 m-bottom-8
-      .row
-        each product,val in products
-          .col-md-3.col-sm-4.col-xs-6
-            .item-block.m-bottom-4
-              a.item-like(href='#', data-productId=product.id)
-                span.glyphicon.glyphicon-heart
-              // /item-like
+      - var reqId = parseInt(req.query.brand, 10);
+      - if (reqId)
+        img(src="#{_.find(brands, {id: reqId}).banner}" class="img-full")
+      form.with-pagination(name="searchProducts", action="/shop/products", method="get")
+        +pagination-fields(page, totalPages, limit)
+        .m-top-8.m-bottom-8
+          //
+            shop-filter
+            ==================================================
+          .btn-group
+            input(name='sort',type='hidden', value= sort)
+            input(name='dptSubId',type='hidden', value= dptSubId)
+            input(name='dptId',type='hidden', value= dptId)
+            input(name='brand',type='hidden', value= brand)
+            button.btn.btn-default.border-radius-circle.dropdown-toggle(type='button', data-toggle='dropdown', aria-haspopup='true', aria-expanded='false')
+              span.glyphicon.glyphicon-list.m-right-1
+              | 預設排序
+            ul.dropdown-menu.width-210.m-top-2.p-top-2.p-bottom-2
+              li
+                a(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&sort=views')
+                  | 受關注度優先
+                  span.glyphicon.glyphicon-chevron-thin-right.pull-right
+              li
+                a(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&sort=top')
+                  | 熱門收藏優先
+                  span.glyphicon.glyphicon-chevron-thin-right.pull-right
+              li
+                a(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&sort=newest')
+                  | 最新上架優先
+                  span.glyphicon.glyphicon-chevron-thin-right.pull-right
+              li
+                a(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&sort=priceHtoL')
+                  | 價格由高至低
+                  span.glyphicon.glyphicon-chevron-thin-right.pull-right
+              li
+                a(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&sort=priceLtoH')
+                  | 價格由低至高
+                  span.glyphicon.glyphicon-chevron-thin-right.pull-right
+              li.p-8-30
+                | 顏色：
+                br
+                a.color-filter.color-red(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=1')
+                a.color-filter.color-orange(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=2')
+                a.color-filter.color-yellow(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=3')
+                a.color-filter.color-green(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=4')
+                a.color-filter.color-blue(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=5')
+                a.color-filter.color-purple(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=6')
+                a.color-filter.color-deeppink(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=7')
+                a.color-filter.color-pink(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=8')
+                a.color-filter.color-black(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=9')
+                a.color-filter.color-gray(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=10')
+                a.color-filter.color-graylight(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=11')
+                a.color-filter.color-gold(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=12')
+                a.color-filter.color-brown(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=13')
+                a.color-filter.color-mix(href='?dptSubId=#{dptSubId}&dptId=#{dptId}&color=14')
+          //-   // /dropdown-menu
+          // /btn-group
+          // /m-top-8 m-bottom-8
+        .row
+          each product,val in products
+            .col-md-3.col-sm-4.col-xs-6
+              .item-block.m-bottom-4
+                a.item-like(href='#', data-productId=product.id)
+                  span.glyphicon.glyphicon-heart
+                // /item-like
 
-              a(href='/shop/products/#{product.ProductGm.id}/#{product.id}')
+                if product.status == 'soldout'
+                  // label: sold out
+                  span.label.label-default
+                    | SOLD
+                    br
+                    | OUT
+                else if product.status == 'sale'
+                  // label: sale
+                  span.label.label-danger SALE
+                else
+                  // label: new
+                  span.label.label-success NEW
 
-                img.img-full.item-show(src=product.photos && product.photos[0]? product.photos[0] : "http://www.culpwrit.com/wp-content/uploads/2012/09/no11.jpg")
-                img.img-full.item-hide(src=product.photos && product.photos[1]? product.photos[1] : "http://www.culpwrit.com/wp-content/uploads/2012/09/no11.jpg")
-            // /item-block
-            .item-text-block.m-bottom-8
-              h6.text-muted
-                a(href='/brands/#{product.ProductGm.brandId}') #{_.find(brands, {id: product.ProductGm.brandId}).name }
-              h4.m-bottom-2.h4-max-two-hide
-                - var name = product.name ? "(" + product.name + ")" : "";
-                //- a(href='/shop/product?pid=#{product.id}') #{product.ProductGm.name} #{name}
 
-                a(href='/shop/products/#{product.ProductGm.id}/#{product.id}') #{product.ProductGm.name} #{name}
-              h5
-                | $ #{product.price}
-            // /item-text-block
-          // /col-md-3
-        // /row
-      .text-center.m-bottom-8
-        //
-          pagination-block
-          ==================================================
-        nav
-          ul.pagination
-            li
-              a(href='#', aria-label='Previous')
-                span(aria-hidden='true') «
-            li.active
-              a(href='#') 1
-            li
-              a(href='#') 2
-            li
-              a(href='#') 3
-            li
-              a(href='#') 4
-            li
-              a(href='#') 5
-            li
-              a(href='#', aria-label='Next')
-                span(aria-hidden='true') »
-      // /text-center
-    // /container
+                a(href='/shop/products/#{product.ProductGm.id}/#{product.id}')
+
+
+                  img.img-full.item-show(src=product.photos && product.photos[0]? product.photos[0] : "http://www.culpwrit.com/wp-content/uploads/2012/09/no11.jpg")
+                  img.img-full.item-hide(src=product.photos && product.photos[1]? product.photos[1] : product.photos[0])
+              // /item-block
+              .item-text-block.m-bottom-8
+                h6.text-muted
+                  a(href='/brands/#{product.ProductGm.BrandId}') #{_.find(brands, {id: product.ProductGm.BrandId}).name }
+                h4.m-bottom-2.h4-max-two-hide
+                  - var name = product.name ? "(" + product.name + ")" : "";
+                  //- a(href='/shop/product?pid=#{product.id}') #{product.ProductGm.name} #{name}
+
+                  a(href='/shop/products/#{product.ProductGm.id}/#{product.id}') #{product.ProductGm.name} #{name}
+                h5
+                  if(product.originPrice == undefined || product.originPrice <= 0)
+                    | #{UtilService.numberFormat(product.price)}
+                  else 
+                    span.text-danger
+                      | #{UtilService.numberFormat(product.price)} 
+                    small.text-line-through.m-left-1
+                      | #{UtilService.numberFormat(product.originPrice)} 
+              // /item-text-block
+            // /col-md-3
+          // /row
+        .text-center.m-bottom-8
+          //
+            pagination-block
+            ==================================================
+          +pagination-simple-pager(page, totalPages)
+        // /text-center
+      // /container
+      if verification
+        input#verification(type='hidden', data-verification= verification)
 block js
-  script(src="/javascripts/main/shop.js")
+  script(src='/javascripts/common/pagination.js')

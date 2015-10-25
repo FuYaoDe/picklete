@@ -32,6 +32,10 @@ module.exports.routes = {
   'get /login': 'AuthController.login'
   'get /logout': 'AuthController.logout'
   'get /register' : 'AuthController.register'
+  'get /forgotPassword' :'AuthController.forgotPassword'
+  'get /newPassword' : 'AuthController.newPassword'
+  'get /verification': 'AuthController.verification'
+  'get /verification/send': 'AuthController.sedVerificationMailAgain'
 
   'get /admin/' : 'AuthController.admin'
   'get /admin/login' : 'UserController.controlLogin'
@@ -45,6 +49,8 @@ module.exports.routes = {
   'get /admin/brands/update' : 'BrandController.update'
   'post /admin/brands/update' : 'BrandController.update'
   'post /admin/brands/delete/' : 'BrandController.delete'
+
+
 
   'get /admin/exclusive' : 'SelectionActiveController.list'
   'post /admin/exclusive' : 'SelectionActiveController.update'
@@ -65,20 +71,20 @@ module.exports.routes = {
 
   'get /index' : 'SelectionActiveController.index'
   'get /FAQ' : 'FAQController.show'
-  'get /member/purchase' : view: 'main/member-purchase'
-  'get /member/setting' : 'UserController.edit'
-  'post /member/update' : 'UserController.update'
+  'get /user/login' : 'MainController.login'
 
   'get /brands' : view: 'main/brands'
   'get /user/cart' : 'UserController.cart'
+  'get /user/loginStatus' : 'UserController.loginStatus'
   'get /user/cart-step-2' : 'ShopController.cartStep2'
-  'get /user/cart-done' : view: 'main/cart-done'
 
   'get /admin/department' : 'DptController.list'
   'post /admin/department/update': 'DptController.update'
   'post /admin/department/sub/create' : 'DptSubController.create'
   'post /admin/department/sub/update' : 'DptSubController.update'
   'post /admin/department/sub/delete' : 'DptSubController.smDelete'
+  'put /admin/department/sortable' : 'DptController.sortable'
+  'put /admin/department/sub/sortable' : 'DptSubController.sortable'
 
   'get /admin/goods' : 'ProductController.list'
   'get /admin/goods/update' : 'ProductController.showUpdate'
@@ -122,6 +128,7 @@ module.exports.routes = {
 
   # promotions
   'get /admin/shop-discount' : 'PromotionController.list'
+  'post /admin/shopDiscount/create' : 'PromotionController.create'
   'get /admin/shop-discount-detail' : 'PromotionController.controlShopDiscountDetail'
   'get /admin/shop-discount-detail2' : 'PromotionController.controlShopDiscountDetail2'
   'get /admin/shop-discount-add-item' : 'PromotionController.controlShopDiscountAddItem'
@@ -129,9 +136,15 @@ module.exports.routes = {
   'get /admin/shop-buy-more-detail' : 'PromotionController.controlShopBuyMoreDetail'
   'get /admin/shop-buy-more-add-item' : 'PromotionController.controlShopBuyMoreAddItem'
   'put /admin/buymoreUpdate' : 'PromotionController.addPurchaseUpdate'
-  'get /admin/shop-code' : 'PromotionController.controlShopCode'
-  'get /admin/shop-code-detail' : 'PromotionController.controlShopCodeDetail'
   'get /admin/shop-report-form' : 'PromotionController.controlShopReportForm'
+
+  # shopCode
+  'get /admin/shop-code' : 'ShopCodeController.controlShopCode' # list
+  'get /admin/shop-code/create': 'ShopCodeController.controlShopCodeDetail' # createView
+  'post /admin/shop-code/create' : 'ShopCodeController.create' # createAction
+  'get /admin/shop-code/update' : 'ShopCodeController.showUpdate' # updateView
+  'post /admin/shop-code/update' : 'ShopCodeController.update' # updateAction
+
   # end promotions
 
   # shipping
@@ -140,10 +153,15 @@ module.exports.routes = {
   'get /shipping/:type' : 'ShippingController.type'
   # end shipping
 
+  # print
+  'get /print' : 'OrderController.print'
+  # end print
+
   # client side / Have to login
   # 'get /member/fav' : view: 'main/member-fav'
+  'post /favorite/add' : 'UserController.updatefavorite'
   'get /member/favorite' : 'UserController.favorite'
-  'get /member/purchase' : view: 'main/member-purchase'
+  'get /member/purchase' : 'UserController.purchase'
   'get /member/setting' : 'UserController.edit'
   'post /member/update' : 'UserController.update'
 
@@ -155,6 +173,10 @@ module.exports.routes = {
 
   'get /shop/products/:productGmid/:productId' : 'ShopController.show'
 
+  'get /shop/done'  : 'ShopController.done'
+
+
+  'get /brands/list' : 'BrandController.listView'
   'get /brands/:id' : 'BrandController.show'
 
   # 'get /admin/brand' : 'BrandController.list'
@@ -176,10 +198,12 @@ module.exports.routes = {
 
   'get /api/order/pay': 'OrderController.pay'
 
-  "get /admin/login": view: "admin/login"
+  # "get /admin/login": view: "admin/login"
 
   'get /api/search/:keywords': 'SearchController.productsJson'
+  'get /search': 'SearchController.products'
   'get /search/:keywords': 'SearchController.products'
+  'get /checkCode' : 'ShopCodeController.checkCode'
 
   'post /allpay/paid':{
     controller: "PaymentController",
@@ -317,6 +341,16 @@ module.exports.routes = {
     }
   }
 
+  # check user email is exited
+  'get /api/user/verify/:email': {
+    controller: "UserController",
+    action: "verify"
+    # cors: {
+    #  origin: "http://localhost:1337, http://localhost:8080",
+    #  credentials: false
+    # }
+  }
+
   'get /api/user/:id': {
     controller: "UserController",
     action: "findOne",
@@ -412,6 +446,23 @@ module.exports.routes = {
   'post /api/slider/delete/:id': {
     controller: "SliderActivitiesController",
     action: "deleteSlider",
+    cors: {
+     origin: "http://localhost:1337, http://localhost:8080",
+     credentials: false
+    }
+  }
+
+  'post /api/shop-code/delete/:id': {
+    controller: "ShopCodeController",
+    action: "delete",
+    cors: {
+     origin: "http://localhost:1337, http://localhost:8080",
+     credentials: false
+    }
+  }
+  'put /admin/brands/resetWeight' : {
+    controller: "BrandController",
+    action: "resetWeight",
     cors: {
      origin: "http://localhost:1337, http://localhost:8080",
      credentials: false

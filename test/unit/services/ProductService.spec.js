@@ -3,6 +3,7 @@ import moment from 'moment';
 describe("about product service", () => {
   let createdProduct, createdProduct2, createdProductGm;
   let productGmA, productGmB, dptA, dptB, dptSubA, dptSubB ,dptC, dptSubC, dptD, dptSubD;
+  let createTestSortProduct;
   before(async (done) => {
 
     try {
@@ -126,7 +127,7 @@ describe("about product service", () => {
         name: 'A1234',
         stockQuantity: 500,
         isPublish: 'true',
-        price: 555,
+        price: 557237,
         productNumber: 'QueryA',
         photos: ['https://dl.dropboxusercontent.com/u/9662264/iplusdeal/images/demo/shop-type-1.jpg'],
         ProductGmId: createdQueryProductGmA.id
@@ -134,7 +135,7 @@ describe("about product service", () => {
         name: 'A1235',
         stockQuantity: 400,
         isPublish: 'true',
-        price: 555,
+        price: 557237,
         productNumber: 'QueryA',
         photos: ['https://dl.dropboxusercontent.com/u/9662264/iplusdeal/images/demo/shop-type-1.jpg'],
         ProductGmId: createdQueryProductGmA.id
@@ -142,7 +143,7 @@ describe("about product service", () => {
         name: 'B1235',
         stockQuantity: 600,
         isPublish: 'true',
-        price: 555,
+        price: 557237,
         productNumber: 'QueryB',
         photos: ['https://dl.dropboxusercontent.com/u/9662264/iplusdeal/images/demo/shop-type-1.jpg'],
         ProductGmId: createdQueryProductGmB.id
@@ -150,11 +151,36 @@ describe("about product service", () => {
         name: 'B1235',
         stockQuantity: 900,
         isPublish: 'true',
-        price: 555,
+        price: 557237,
         productNumber: 'QueryB',
         photos: ['https://dl.dropboxusercontent.com/u/9662264/iplusdeal/images/demo/shop-type-1.jpg'],
         ProductGmId: createdQueryProductGmB.id
       }]);
+
+
+      let superCheap ={
+        name: 'B200',
+        stockQuantity: 900,
+        isPublish: 'true',
+        price: 1,
+        productNumber: 'QueryB',
+        photos: ['https://dl.dropboxusercontent.com/u/9662264/iplusdeal/images/demo/shop-type-1.jpg'],
+        ProductGmId: createdQueryProductGmB.id
+      }
+
+      createTestSortProduct = await db.Product.create(superCheap);
+
+      let pageViewA = {
+        pageView :10,
+        ProductGmId: createdQueryProductGmA.id
+      }
+      let createPageViewA = await db.PageView.create(pageViewA);
+
+      let pageViewB = {
+        pageView :20,
+        ProductGmId: createdQueryProductGmB.id
+      }
+      let createPageViewB = await db.PageView.create(pageViewB);
 
       done();
     } catch (e) {
@@ -324,21 +350,90 @@ describe("about product service", () => {
   it('product query by name', async (done) => {
     try{
       let queryObj = {}, queryResults;
-      queryObj.name = 'A';
+      queryObj.name = 'GroupA';
       queryResults = await ProductService.productQuery(queryObj);
-      queryResults = queryResults.rows;
-      queryResults.should.have.length(3);
-      await* queryResults.map( async (product) => {
-        let gmResult = await db.ProductGm.findById(product.ProductGmId);
-        let name = product['name'] + gmResult.name;
+      console.log(queryResults);
+      queryResults.count.should.be.above(0);
+      for (let product of queryResults.rows) {
+        let name = product['ProductGm']['name'];
         name.should.be.include(queryObj.name);
-      });
-      queryObj.name = 'B123';
+      }
+      done();
+    } catch (e) {
+      done(e);
+    }
+  });
+
+  it('product query by priceLtoH', async (done) => {
+    try{
+      let queryObj = {}, queryResults;
+      queryObj.sort = 'priceLtoH';
       queryResults = await ProductService.productQuery(queryObj);
-      queryResults = queryResults.rows;
-      await* queryResults.map( async (product) => {
-        product['name'].should.be.include(queryObj.name);
-      });
+      sails.log.info(queryResults.rows[0]);
+      let lastPrice = 0;
+      for (let product of queryResults.rows) {
+        if(product.price){
+          sails.log.info(product.price);
+          product.price.should.be.above(lastPrice-1);
+          lastPrice = product.price;
+        }
+      }
+      done();
+    } catch (e) {
+      done(e);
+    }
+  });
+
+  it('product query by priceHtoL', async (done) => {
+    try{
+      let queryObj = {}, queryResults;
+      queryObj.sort = 'priceHtoL';
+      queryResults = await ProductService.productQuery(queryObj);
+      sails.log.info(queryResults.rows[0]);
+      let lastPrice = 99999999999;
+      for (let product of queryResults.rows) {
+        if(product.price){
+          sails.log.info(product.price);
+          product.price.should.be.below(lastPrice+1);
+          lastPrice = product.price;
+        }
+      }
+      done();
+    } catch (e) {
+      done(e);
+    }
+  });
+
+  it('product query by views', async (done) => {
+    try{
+      let queryObj = {}, queryResults;
+      queryObj.sort = 'views';
+      queryResults = await ProductService.productQuery(queryObj);
+      sails.log.info(queryResults.rows[0]);
+      let lastPageView = 99999999999;
+      for (let product of queryResults.rows) {
+        if(product.ProductGm.PageView){
+          sails.log.info(product.ProductGm.PageView.pageView);
+          product.ProductGm.PageView.pageView.should.be.below(lastPageView+1);
+          lastPageView = product.ProductGm.PageView.pageView;
+        }
+      }
+      done();
+    } catch (e) {
+      done(e);
+    }
+  });
+
+  it('product query by newest', async (done) => {
+    try{
+      let queryObj = {}, queryResults;
+      queryObj.sort = 'newest';
+      queryResults = await ProductService.productQuery(queryObj);
+      let lastCreatedAt = queryResults.rows[0].createdAt
+      for (let product of queryResults.rows) {
+        sails.log.info(product.createdAt);
+        lastCreatedAt = product.createdAt;
+      }
       done();
     } catch (e) {
       done(e);
@@ -351,12 +446,18 @@ describe("about product service", () => {
       queryObj.productNumber = 'QueryA';
       queryResults = await ProductService.productQuery(queryObj);
       queryResults = queryResults.rows;
-      queryResults.should.have.length(3);
+      for (let product of queryResults) {
+        product['productNumber'].should.be.equal(queryObj.productNumber);
+      }
+      // queryResults.should.have.length(3);
 
       queryObj.productNumber = 'QueryB';
       queryResults = await ProductService.productQuery(queryObj);
       queryResults = queryResults.rows;
-      queryResults.should.have.length(2);
+      for (let product of queryResults) {
+        product['productNumber'].should.be.equal(queryObj.productNumber);
+      }
+      // queryResults.should.have.length(2);
       done();
     } catch (e) {
       done(e);
@@ -370,12 +471,12 @@ describe("about product service", () => {
       queryResults = await ProductService.productQuery(queryObj);
       queryResults = queryResults.rows;
       for (let product of queryResults) {
-        let GmData = await db.ProductGm.findOne({where:{id: product.ProductGmId}, include: [db.DptSub] });
-        let GmDptDatas = GmData.DptSubs;
+        let GmData = await db.ProductGm.findOne({where:{id: product.ProductGmId}, include: [db.Dpt] });
+        let GmDptDatas = GmData.Dpts;
         let dptIds = [];
 
         for (let gmDptData of GmDptDatas) {
-          let dptId = gmDptData.DptId;
+          let dptId = gmDptData.id;
           dptIds.push(dptId);
         }
         dptIds.should.be.include(queryObj.dptId);
@@ -418,10 +519,13 @@ describe("about product service", () => {
   it('product query by price', async (done) => {
     try{
       let queryObj = {}, queryResults;
-      queryObj.price = 555;
+      queryObj.price = 557237;
       queryResults = await ProductService.productQuery(queryObj);
       queryResults = queryResults.rows;
-      queryResults.should.have.length(4);
+      // queryResults.should.have.length(4);
+      for (let product of queryResults) {
+        product['price'].should.be.equal(queryObj.price);
+      }
       done();
     } catch (e) {
       done(e);
@@ -434,7 +538,7 @@ describe("about product service", () => {
       queryObj.tag = '手';
       queryResults = await ProductService.productQuery(queryObj);
       queryResults = queryResults.rows;
-      queryResults.should.have.length(5);
+      // queryResults.should.have.length(5);
 
       for (let product of queryResults) {
         let result = await db.ProductGm.findById(product.ProductGmId);
@@ -470,7 +574,7 @@ describe("about product service", () => {
       queryObj.stockQuantityEnd = 800;
       queryResults = await ProductService.productQuery(queryObj);
       queryResults = queryResults.rows;
-      queryResults.should.have.length(3);
+      // queryResults.should.have.length(3);
       await queryResults.map( async (product) => {
         product['stockQuantity'].should.be.within( queryObj.stockQuantityStart, queryObj.stockQuantityEnd);
       });
@@ -479,5 +583,6 @@ describe("about product service", () => {
       done(e);
     }
   });
+
 
 });

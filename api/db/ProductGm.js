@@ -2,8 +2,8 @@
 module.exports = (sequelize, DataTypes) => {
   let ProductGm = sequelize.define('ProductGm', {
     // 品牌 id
-    brandId: DataTypes.INTEGER,
-    brandName: DataTypes.STRING,
+    // brandId: DataTypes.INTEGER,
+    // brandName: DataTypes.STRING,
     name: DataTypes.STRING,
     // 大館別 id
     // dptId: {
@@ -91,10 +91,14 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     classMethods: {
       associate: (models) => {
+        ProductGm.belongsTo(models.Brand)
         ProductGm.hasMany(models.Product)
         ProductGm.belongsToMany(models.Dpt, {through: 'DptProductGm'});
         ProductGm.belongsToMany(models.DptSub, {through: 'DptSubProductGm'});
         ProductGm.belongsToMany(models.AdditionalPurchase, {through: 'AdditionalPurchaseProductGm'});
+        ProductGm.belongsToMany(models.Promotion, {through: 'PromotionProductGm'});
+        ProductGm.hasOne(models.LikesCount);
+        ProductGm.hasOne(models.PageView);
         return
       }
     },

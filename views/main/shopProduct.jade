@@ -71,10 +71,19 @@ block body
               .row.m-bottom-4
                 .col-sm-10.col-xs-9.m-bottom-4
                   h5.text-muted.letter-spacing-3.text-roboto.m-bottom-2
-                    a(href='brands.html') #{productGm.name}
+                    a(href='/brands/#{brand.id}') #{brand.name}
                   h2.text-black.m-bottom-6.text-roboto #{productGm.name} #{name}
-                  .h3.text-black.m-bottom-4 $ 
-                    span#price #{product.price}
+                  
+                  if(product.originPrice == undefined || product.originPrice <= 0)
+                    h3
+                      span#price #{UtilService.numberFormat(product.price)}
+                  else 
+                    h3.text-black.m-bottom-4
+                      span.text-danger #{UtilService.numberFormat(product.price)}
+                      small.text-line-through.m-left-1#originPrice #{UtilService.numberFormat(product.originPrice)}
+                    h4.text-danger 活動倒數 #{product.promotionCountDown}
+                  
+
                 // /col-sm-10
                 .col-sm-2.col-xs-3
                   //
@@ -110,9 +119,11 @@ block body
                   // /input-group
                 // /col-sm-4
                 .col-sm-8
+                  - var productName = (product.name) ? "(" + product.name + ")" : "";
                   a.btn.btn-black.border-radius-circle.btn-block.btn-lg.add-to-cart(
-                  data-productId=product.id, data-photos=product.photos, 
-                  data-brand=productGm.name, data-name=product.name) 加入購物車 
+                  data-productGmId=productGm.id,, data-productId=product.id, data-photos=product.photos, 
+                  data-brand=productGm.name, data-name="#{product.ProductGm.name}#{productName}" , data-brandname=_.find(brands, {id: product.ProductGm.BrandId}).name,
+                  data-price=product.price) 加入購物車 
                 // /col-sm-8
               // /row
               
@@ -125,17 +136,17 @@ block body
                         a(href='/shop/products/#{thisProduct.ProductGmId}/#{thisProduct.id}')
                           img.img-full(src='#{thisProduct.photos[0]}')
                           // /item-block
-                    else if thisProduct.isPublish == 'false'
+                    else if thisProduct.stockQuantity == 0
                       .item-block.border-block-img.m-bottom-4.item-soldout
                         .item-soldout-text
                           h6
                             | SOLD
                             br
                             | OUT
-                          a(href='/shop/products/#{thisProduct.ProductGmId}/#{thisProduct.id}')
+                        a(href='/shop/products/#{thisProduct.ProductGmId}/#{thisProduct.id}')
                           img.img-full(src='#{thisProduct.photos[0]}')
-                          // /item-block
-                    else
+                        // /item-block
+                    else if thisProduct.isPublish == true
                       .item-block.border-block-img.m-bottom-4
                         a(href='/shop/products/#{thisProduct.ProductGmId}/#{thisProduct.id}')
                           img.img-full(src='#{thisProduct.photos[0]}')
@@ -155,7 +166,7 @@ block body
                 .tab-content.m-bottom-10.font-size-slarge
                   #p-tab-1.tab-pane.fade.in.active
                     p.m-bottom-4
-                      | #{product.description}
+                      | !{product.ProductGm.explain}
                     p.m-bottom-4
                       | 品牌國家 - #{product.country}
                       br
@@ -164,41 +175,30 @@ block body
                       | 產品尺寸 - #{product.size}
                       br
                       | 產品材質 - #{product.spec}
-                      br
-                      | 產品顏色 - #{product.color}
-                      br
-                      | 產品貨號 - #{product.productNumber}
-                      br
-                      | 備註 - #{product.comment}
                   // /tab-pane
                   #p-tab-2.tab-pane.fade
                     p
-                      | 使用方法
-                      br
                       | !{productGm.notice}
-                      br
-                      | 注意事項
-                      br  
-                      | !{productGm.usage}
                   // /tab-pane
                   #p-tab-3.tab-pane.fade
                     p
-                      | !{productGm.explain}
+                      | !{productGm.Brand.desc}
                   // /tab-pane
                 // /tab-content
                 h4.m-bottom-4 服務項目 #{product.services}
                 .row.row-s.m-bottom-10
+                  - var icon = ['truck','store','globe','gift2']
                   each service, index in ['快遞宅配', '超商取貨', '國際運送', '禮品包裝']
                     .col-sm-6
                       if services[index]
-                        .border-block-2.text-center.p-10.m-bottom-2
+                        .border-block-2.text-center.p-10.m-bottom-2(id='service-#{index}')
                           h4
-                            span.glyphicon.glyphicon-truck.m-right-2.font-size-xlarge
+                            span.glyphicon.m-right-2.font-size-xlarge(class = "glyphicon-#{icon[index]}")
                             | #{service}
                       else
-                        .border-block-2.text-center.p-10.m-bottom-2.disabled
+                        .border-block-2.text-center.p-10.m-bottom-2.disabled(id='service-#{index}')
                           h4
-                            span.glyphicon.glyphicon-truck.m-right-2.font-size-xlarge
+                            span.glyphicon.m-right-2.font-size-xlarge(class = "glyphicon-#{icon[index]}")
                             | #{service}
                       // /border-block-2
                     // /col-sm-6
@@ -206,23 +206,23 @@ block body
                 h4.m-bottom-4 分享至
                 ul.list-inline.list-social.m-bottom-10
                   li
-                    a(href='#', target='_blank')
+                    a(name="fb_share" type="icon_link" href="javascript: void(window.open('http://www.facebook.com/share.php?u='.concat(encodeURIComponent(location.href)) ));")
                       span.label.label-social.label-fb
                         span.glyphicon.glyphicon-fb
                   li
-                    a(href='#', target='_blank')
+                    a(href='#', target='_blank',onClick="javascript: void(window.open('http://twitter.com/home/?status='.concat(encodeURIComponent(document.title)) .concat(' ') .concat(encodeURIComponent(location.href))));")
                       span.label.label-social.label-twitter
                         span.glyphicon.glyphicon-twitter
                   li
-                    a(href='#', target='_blank')
+                    a(href="javascript:void((function(){var%20e=document.createElement('script');e.setAttribute('type','text/javascript');e.setAttribute('charset','UTF-8');e.setAttribute('src','http://assets.pinterest.com/js/pinmarklet.js?r='+Math.random()*99999999);document.body.appendChild(e)})());" class="pin-it-button" count-layout="none" target='_blank')
                       span.label.label-social.label-pinterest
                         span.glyphicon.glyphicon-pinterest
                   li
-                    a(href='#', target='_blank')
+                    a(href="javascript:void(window.open('https:\/\/plus.google.com/share?url='.concat(encodeURIComponent(location.href)), '', 'menubar=no,toolbar=no,resizable=yes,scrollbars=yes,height=600,width=600'));", target='_blank')
                       span.label.label-social.label-google
                         span.glyphicon.glyphicon-google
                   li
-                    a(href='#', target='_blank')
+                    a(href="javascript:void(window.open('mailto:?subject=分享美好的事與物&body=分享美好的事物給你 '.concat(encodeURIComponent(location.href))));", target='_blank')
                       span.label.label-social.label-mail
                         span.glyphicon.glyphicon-mail
                 // /list-social
@@ -238,42 +238,13 @@ block body
           .container
             h4.m-bottom-6.m-top-10 你可能會喜歡
             .row.m-bottom-10
-              .col-xs-4.col-sm-4.col-md-2
-                .item-block.m-bottom-4
-                  a(href='/shop/products')
-                    img.img-full(src='images/demo/shop-item-24-1.jpg')
-                // /item-block
-              // /col-xs-4
-              .col-xs-4.col-sm-4.col-md-2
-                .item-block.m-bottom-4
-                  a(href='/shop/products')
-                    img.img-full(src='images/demo/shop-item-23-1.jpg')
-                // /item-block
-              // /col-xs-4
-              .col-xs-4.col-sm-4.col-md-2
-                .item-block.m-bottom-4
-                  a(href='/shop/products')
-                    img.img-full(src='images/demo/shop-item-22-1.jpg')
-                // /item-block
-              // /col-xs-4
-              .col-xs-4.col-sm-4.col-md-2
-                .item-block.m-bottom-4
-                  a(href='/shop/products')
-                    img.img-full(src='images/demo/shop-item-21-1.jpg')
-                // /item-block
-              // /col-xs-4
-              .col-xs-4.col-sm-4.col-md-2
-                .item-block.m-bottom-4
-                  a(href='/shop/products')
-                    img.img-full(src='images/demo/shop-item-20-1.jpg')
-                // /item-block
-              // /col-xs-4
-              .col-xs-4.col-sm-4.col-md-2
-                .item-block.m-bottom-4
-                  a(href='/shop/products')
-                    img.img-full(src='images/demo/shop-item-19-1.jpg')
-                // /item-block
-              // /col-xs-4
+              each product in recommendProducts
+                .col-xs-4.col-sm-4.col-md-2
+                  .item-block.m-bottom-4
+                    a(href='/shop/products/#{product.ProductGmId}/#{product.id}')
+                      img.img-full(src='#{product.photos[0]}')
+                  // /item-block
+                // /col-xs-4
             // /row
           // /container
         // /cbp-so-side
@@ -281,4 +252,4 @@ block body
     // /cbp-so-scroller
 
 block js
-  script(src="/javascripts/main/shop.js")
+  //- script(src="http://static.ak.fbcdn.net/connect.php/js/FB.Share" type="text/javascript")

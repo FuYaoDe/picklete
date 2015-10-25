@@ -7,11 +7,7 @@ var OrderController;
 OrderController = {
   debug: async (req, res) => {
     try {
-      let count = await db.Order.count();
-
-      res.ok({
-        count: count
-      });
+      res.ok(await db.Order.findAll({limit: 3, order: 'id DESC'}));
     }
     catch (error) {
       return res.serverError(error);
@@ -30,11 +26,6 @@ OrderController = {
       else
         query.serialNumber =''
 
-      if(query.shippingMethod != '0' && query.shippingMethod)
-        queryObj.shippingMethod = query.shippingMethod;
-      else
-        query.shippingMethod = 0
-
       // if(query.keyword)
       //   queryObj.keyword = { 'like': '%'+query.keyword+'%'};
 
@@ -51,6 +42,14 @@ OrderController = {
 
       // if(query.shipmentNotify != '0' && query.shipmentNotify)
       //   queryObj.shipmentNotify = query.shipmentNotify;
+
+      if(query.shippingMethod != '0' && query.shippingMethod){
+        if(query.shippingMethod == 1){
+          queryShipmentObj.shippingType = { 'like': 'postoffice'};
+        }else if(query.shippingMethod == 2){
+          queryShipmentObj.shippingType = { 'like': 'delivery'};
+        }
+      }
 
       if(query.addressee) {
         queryShipmentObj.username = { 'like': '%'+query.addressee+'%'};
@@ -87,12 +86,11 @@ OrderController = {
             }
           }, {
             model: db.Shipment,
-            where: {
-              username: queryShipmentObj.username
-            }
+            where: queryShipmentObj
           }, {
             model: db.OrderItem
-          }
+          },
+          db.Invoice
         ]
       };
 
@@ -151,29 +149,56 @@ OrderController = {
   },
   create: async (req, res) => {
     var newOrder = req.body.order;
+
     try {
+
+      console.log("Order",newOrder);
+
       let useAllPay = false;
-      if(sails.config.useAllPay !== undefined)
+
+      if (sails.config.useAllPay !== undefined) {
         useAllPay = sails.config.useAllPay;
+      }
+
       let result = await OrderService.create(newOrder);
-      if(useAllPay){
-        var allPayData = await OrderService.allPayCreate(result.order);
+
+      console.log('***************');
+      console.log(result);
+      if(result.order.paymentTotalAmount <=0)
+        throw new Error ('結帳金額異常');
+
+      if (useAllPay) {
+        var allPayData = await OrderService.allPayCreate(result.order,newOrder.paymentMethod);
+
+        console.log("allPayData", allPayData);
+
+        let order = await db.Order.findById(result.order.id);
+        order.merchantTradeNo = allPayData.MerchantTradeNo;
+        order.allPayPaymentType = newOrder.paymentMethod;
+        await order.save();
+
         let AioCheckOut = 'https://payment.allpay.com.tw/Cashier/AioCheckOut';
-        if(sails.config.environment === 'development' || sails.config.environment === 'test'){
+        if(sails.config.environment === 'development' || sails.config.environment === 'test' || sails.config.allpay.debug){
           AioCheckOut = 'https://payment-stage.allpay.com.tw/Cashier/AioCheckOut';
         }
+
+        // todo: 清空購物車
+        res.clearCookie('picklete_cart');
+
         res.view('order/allPay',{
           allPayData,
           AioCheckOut
         });
-      }else{
+      }
+      else{
         return res.ok(result);
       }
     } catch (e) {
       console.error(e.stack);
       let {message} = e;
       let success = false;
-      return res.serverError({message, success});
+      return res.json(500,{message, success});
+      // return res.serverError({message, success});
     }
   },
   pay: async (req, res)=> {
@@ -259,7 +284,7 @@ OrderController = {
       user.orderSyncToken = token;
       await user.save();
 
-      let messageConfig = CustomMailerService.orderSync(user, host);
+      let messageConfig = await CustomMailerService.orderSync(user, host);
 
       let message = await db.Message.create(messageConfig);
       await CustomMailerService.sendMail(message);
@@ -339,6 +364,36 @@ OrderController = {
       let {message} = e;
       res.serverError({message, success: false});
     }
+  },
+
+  print: async (req, res) =>{
+    var id = req.query.id;
+    var orderId = id.split(',');
+    
+    var queryObj ={
+      where:{
+        id : orderId
+      },
+      include: [
+        {
+          model: db.User
+        },{
+          model: db.Shipment
+          // where: queryShipmentObj
+        },{
+          model: db.OrderItem,
+          include: db.Product
+        },{
+          model: db.Invoice
+        }
+      ]
+    };
+
+    let orders = await db.Order.findAll(queryObj);
+    console.log(orders.item);
+    return res.view('admin/print',{
+      orders
+    });
   }
 
 };

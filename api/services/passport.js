@@ -68,11 +68,12 @@ passport.protocols = require('./protocols');
  * @param {Function} next
  */
 
-passport.connect = function(req, query, profile, next) {
-  console.log('=== do login ===');
+passport.connect = async function(req, query, profile, next) {
+  console.log('=== do login ===',query);
+  console.log('=== do login profile ===',profile);
   var provider, user;
   user = {};
-  provider = void 0;
+  provider = undefined;
   query.provider = req.param('provider');
   provider = profile.provider || query.provider;
   if (!provider) {
@@ -84,72 +85,145 @@ passport.connect = function(req, query, profile, next) {
     user.email = profile.email;
   }
   if (profile.hasOwnProperty('username')) {
-    user.username = profile.username;
+    user.username = profile.email || profile.username || profile.displayName;
   } else if (profile.hasOwnProperty('family_name')) {
     user.username = profile.family_name;
   } else {
     user.username = user.email;
   }
+
+  if(profile.hasOwnProperty('displayName')){
+    user.fullName = profile.displayName;
+  }
+
   if (!user.username && !user.email) {
     return next(new Error('Neither a username nor email was available'));
   }
-  db.Passport.findOne({
-    where: {
-      provider: provider,
-      identifier: query.identifier.toString()
+
+  try {
+
+
+    let passport = await db.Passport.findOne({
+      where: {
+        provider: provider,
+        identifier: query.identifier.toString()
+      }
+    });
+
+    //有一般使用者登入但沒使用FB註冊過
+    let loginedUser = req.user;
+    sails.log.info("=== loginedUser ===",loginedUser);
+    if (loginedUser && !passport) {
+      query.UserId = loginedUser.id;
+      passport = await Passport.create(query);
+      return next(null, loginedUser);
     }
-  }, function(err, passport) {
-    if (err) {
-      return next(err);
-    }
-    if (!req.user) {
-      if (!passport) {
-        User.create(user, function(err, user) {
-          if (err) {
-            if (err.code === 'E_VALIDATION') {
-              if (err.invalidAttributes.email) {
-                req.flash('error', 'Error.Passport.Email.Exists');
-              } else {
-                req.flash('error', 'Error.Passport.User.Exists');
-              }
-            }
-            return next(err);
-          }
-          query.user = user.id;
-          Passport.create(query, function(err, passport) {
-            if (err) {
-              return next(err);
-            }
-            next(err, user);
-          });
-        });
-      } else {
-        if (query.hasOwnProperty('tokens') && query.tokens !== passport.tokens) {
-          passport.tokens = query.tokens;
+
+    //已用FB註冊過，直接登入
+    if(passport){
+      if(query.hasOwnProperty('tokens') && query.tokens !== passport.tokens){
+        passport.tokens = query.tokens;
+        passport = await passport.save();
+      }
+      user = await db.User.findOne({
+        where:{
+          id: passport.UserId
+        },
+        include:{
+          model: db.Role
         }
-        passport.save(function(err, passport) {
-          if (err) {
-            return next(err);
-          }
-          db.User.findOne({
-            where: passport.user.id
-          }, next);
-        });
-      }
-    } else {
-      if (!passport) {
-        query.user = req.user.id;
-        Passport.create(query, function(err, passport) {
-          if (err) {
-            return next(err);
-          }
-          next(err, req.user);
-        });
-      } else {
-        next(null, req.user);
-      }
+      });
+      if(user)
+        return next(null, user)
+      else
+        throw new Error('Error user not found');
     }
-  });
+
+    // 註冊FB帳號
+    let role = await db.Role.find({
+      where: {authority: 'user'}
+    });
+    user.RoleId = role.id;
+
+    let checkMail;
+    if(user.hasOwnProperty('eamil')){
+      checkMail = await db.User.findOne({where:{email:user.email}});
+    }
+
+    if(checkMail){
+      throw new Error('Error passport email exists');
+    } else{
+      user = await db.User.create(user);
+      user.dataValues.Role = role;
+      query.UserId = user.id;
+      passport = await db.Passport.create(query);
+      return next(null, user);
+    }
+
+  } catch (err) {
+    req.flash('error',err.message);
+    console.log(err);
+    return next(err);
+  }
+  //
+  // let passport = await db.Passport.findOne({
+  //   where: {
+  //     provider: provider,
+  //     identifier: query.identifier.toString()
+  //   }
+  // }, function(err, passport) {
+  //   if (err) {
+  //     return next(err);
+  //   }
+  //
+  //   if (!req.user) {
+  //     if (!passport) {
+  //       User.create(user, function(err, user) {
+  //         if (err) {
+  //           if (err.code === 'E_VALIDATION') {
+  //             if (err.invalidAttributes.email) {
+  //               req.flash('error', 'Error.Passport.Email.Exists');
+  //             } else {
+  //               req.flash('error', 'Error.Passport.User.Exists');
+  //             }
+  //           }
+  //           return next(err);
+  //         }
+  //         query.user = user.id;
+  //         Passport.create(query, function(err, passport) {
+  //           if (err) {
+  //             return next(err);
+  //           }
+  //           next(err, user);
+  //         });
+  //       });
+  //     } else {
+  //       if (query.hasOwnProperty('tokens') && query.tokens !== passport.tokens) {
+  //         passport.tokens = query.tokens;
+  //       }
+  //       passport.save(function(err, passport) {
+  //         if (err) {
+  //           return next(err);
+  //         }
+  //         db.User.findOne({
+  //           where: passport.user.id
+  //         }, next);
+  //       });
+  //     }
+  //   } else {
+  //     if (!passport) {
+  //       query.user = req.user.id;
+  //       Passport.create(query, function(err, passport) {
+  //         if (err) {
+  //           return next(err);
+  //         }
+  //         next(err, req.user);
+  //       });
+  //     } else {
+  //       next(null, req.user);
+  //     }
+  //   }
+  // });
 };
 
 
@@ -311,13 +385,13 @@ passport.disconnect = function(req, res, next) {
 };
 
 passport.serializeUser(function(user, next) {
+  sails.log.info("serializeUser",user);
   return next(null, user);
 });
 
-passport.deserializeUser(function(id, next) {
-  return db.User.findOneById(id).then(function(user) {
-    return next(null, user);
-  });
+passport.deserializeUser(function(user, next) {
+  sails.log.info("deserializeUser",user);
+  return next(null, user);
 });
 
 module.exports = passport;

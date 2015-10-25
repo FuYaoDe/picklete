@@ -18,6 +18,13 @@ describe("about Product", () => {
     sinon.stub(UserService, 'getLoginState', (req) => {
       return true;
     });
+    let admin = await db.User.find ({
+      where: {username: 'admin'},
+      include: [db.Role]
+    });
+    sinon.stub(UserService, 'getLoginUser', (req) => {
+      return admin;
+    });
 
     // get pre-built product/prouctGm infos
     testProduct = await testData.testData();
@@ -36,7 +43,7 @@ describe("about Product", () => {
 
     // simulated loginout
     UserService.getLoginState.restore();
-
+    UserService.getLoginUser.restore();
     done();
   });
   // end after
@@ -162,6 +169,7 @@ describe("about Product", () => {
       if (res.statusCode === 500) {
         return done(body)
       }
+      console.log('=== res.body.products ==>', res.body.products);
       res.statusCode.should.equal(200);
       res.body.pageName.should.be.equal("/admin/goods");
       res.body.query.responseType.should.be.equal("json");

@@ -10,15 +10,52 @@ let moment = require("moment");
 
 let UserController = {
 
+
+  verify: async (req, res) => {
+    var email = req.param("email");
+
+    if ( ! email)
+      return res.json({ result: 'fail' });
+
+    try {
+      if(UserService.getLoginState(req)){
+        let loginUser = UserService.getLoginUser(req);
+        var result = await db.User.findOne({
+          where: {
+            email: email
+          }
+        });
+        if(result){
+          if(result.id == loginUser.id){
+            result = null;
+          }
+        }
+      }else{
+        var result = await db.User.findOne({
+          where: {
+            email: email
+          }
+        });
+      }
+
+      var response = (result) ? { result: "existed" } : { result: "ok" };
+      return res.json(response);
+    } catch (e) {
+      console.log(e);
+      return res.json({ result: 'fail'});
+      return res.view("main/memberFavorite", {products: []});
+    }
+  },
+
   favorite: async (req, res) => {
+
     var FAV_KEY = "picklete_fav";
     var favoriteKeys = req.cookies[FAV_KEY];
-
     try {
       favoriteKeys = JSON.parse(favoriteKeys);
     } catch (e) {
       favoriteKeys = null;
-      return res.view("main/memberFavorite");
+      return res.view("main/memberFavorite", {products: []});
     }
 
     let products = await ProductService.findFavorite(favoriteKeys);
@@ -26,6 +63,89 @@ let UserController = {
     res.view("main/memberFavorite", {
       products
     });
+  },
+
+  updatefavorite: async (req, res) => {
+
+    var FAV_KEY = "picklete_fav";
+    var favoriteKeys = req.cookies[FAV_KEY];
+    sails.log.info("=== cookies ===",req.cookies);
+    try {
+      favoriteKeys = JSON.parse(favoriteKeys);
+      sails.log.info("=== favoriteKeys ===",favoriteKeys);
+      let products = Object.keys(favoriteKeys);
+      sails.log.info("=== products ===",products);
+      let user = UserService.getLoginUser(req);
+      if(user){
+        user = await db.User.findById(user.id);
+        let UserFavorites = await user.getProducts();
+        let favorite = await* products.map( async (productId) => {
+          // sails.log.info("==== find ====",find);
+          let product;
+          let isNewFavorite = true;
+          UserFavorites.forEach((favorite) => {
+            if(favorite.id == productId){
+              isNewFavorite = false
+            }
+          });
+          product = await db.Product.findById(productId);
+          if(isNewFavorite){
+            let productGm = await db.ProductGm.findById(product.ProductGmId);
+
+            let count = (await db.LikesCount.findOrCreate({
+              where:{
+                ProductGmId: productGm.id
+              },
+              defaults:{
+                ProductGmId: productGm.id
+              }
+            }))[0];
+            count.likesCount ++;
+            count = await count.save();
+
+          }
+          return product;
+        });
+        await user.setProducts(favorite);
+      }
+      let message = '更新收藏';
+      return res.ok(message);
+    } catch (e) {
+      favoriteKeys = null;
+      sails.log.error(e);
+      let {message} = e;
+      let success = false;
+      return res.json(500,{message, success});
+    }
+  },
+
+  purchase:async (req, res) => {
+    let loginUser = UserService.getLoginUser(req);
+    let orders = await db.Order.findAll({
+      where: {UserId: loginUser.id},
+      include: [{
+        model: db.OrderItem
+      },{
+        model: db.Shipment
+      },{
+        model: db.Invoice
+      }]
+    });
+    console.log(orders);
+    res.view("main/memberPurchase",{
+      orders
+    });
+  },
+  loginStatus: async(req, res) => {
+    try {
+        let loginStatus = UserService.getLoginState(req);
+        return res.ok({loginStatus});
+    } catch (e) {
+      console.error(e.stack);
+      let {message} = e;
+      let success = false;
+      return res.serverError({message, success});
+    }
   },
 
   cart: async (req, res) => {
@@ -42,8 +162,6 @@ let UserController = {
       });
     }
 
-
-
     let company = await db.Company.findOne();
     let brands = await db.Brand.findAll();
 
@@ -52,15 +170,16 @@ let UserController = {
     let additionalPurchaseProductGms = await AdditionalPurchaseService.getProductGms(query);
     console.log('=== additionalPurchaseProducts ===', additionalPurchaseProductGms);
 
-    // add an item for Shippings(運費) by kuyen
+    // add an item for Shippings
     let shippings = await ShippingService.findAll();
     // console.log('=== shippings ==>',shippings);
-
+    let paymentMethod = sails.config.allpay.paymentMethod;
     return res.view('main/cart', {
       company,
       brands,
       additionalPurchaseProductGms,
-      shippings
+      shippings,
+      paymentMethod
     });
   },
 
@@ -92,7 +211,14 @@ let UserController = {
       let updateUser = req.body;
       let passport = await db.Passport.find({where: {UserId: loginUser.id}});
 
-      let user = await db.User.findById(loginUser.id);
+      let user = await db.User.findOne({
+        where:{
+          id: loginUser.id
+        },
+        include:{
+          model: db.Role
+        }
+      });
 
       if(updateUser.password != passport.password){
         passport.password = updateUser.password;
@@ -110,10 +236,15 @@ let UserController = {
       if(updateUser.userLikes != undefined)
         await user.setLikes(updateUser.userLikes);
 
+      let messageConfig = await CustomMailerService.userUpdateMail(user);
+      let message = await db.Message.create(messageConfig);
+      await CustomMailerService.sendMail(message);
 
+      req.login(user, function(err) {
+          if (err) return res.serverError(err);
 
-      return res.redirect('/member/setting');
-
+          return res.redirect('/');
+      })
 
     } catch (e) {
       console.error(e.stack);
@@ -133,7 +264,7 @@ let UserController = {
     if(UserService.getLoginState(req))
       res.redirect('/admin/goods');
     else
-      res.view({});
+      res.view("admin/login");
   },
   indexSlider: function(req, res) {
     res.view({

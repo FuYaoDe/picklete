@@ -26,13 +26,20 @@ describe("about Shipping", () => {
       region: 'Out of Taiwan island',
       fee: '300'
     }];
-    await* testDatas.map((testData) => {
-      db.Shipping.create(testData);
+    await* testDatas.map(async (testData) => {
+      return await db.Shipping.create(testData);
     });
 
     // simulate login
     sinon.stub(UserService, 'getLoginState', (req) => {
       return true;
+    });
+    let admin = await db.User.find ({
+      where: {username: 'admin'},
+      include: [db.Role]
+    });
+    sinon.stub(UserService, 'getLoginUser', (req) => {
+      return admin;
     });
 
     done();
@@ -44,7 +51,7 @@ describe("about Shipping", () => {
 
     // simulated loginout
     UserService.getLoginState.restore();
-
+    UserService.getLoginUser.restore();
     done();
   });
   // end after

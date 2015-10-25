@@ -28,8 +28,8 @@ describe("ShippingService", () => {
       region: 'Out of Taiwan island',
       fee: '300'
     }];
-    await* testDatas.map((testData) => {
-      db.Shipping.create(testData);
+    await* testDatas.map(async (testData) => {
+        return await db.Shipping.create(testData);
     });
 
     done();
@@ -53,15 +53,7 @@ describe("ShippingService", () => {
       findAll.success.should.be.true;
       // part 1 - length check
       findAll.shippings.length.should.be.equal(4);
-      // part 2 - first one's data
-      findAll.shippings[0].type.should.be.equal("postoffice");
-      findAll.shippings[0].type.should.be.equal("postoffice");
-      findAll.shippings[0].region.should.be.equal("Taiwan island");
-      findAll.shippings[0].fee.should.be.equal(100);
-      // part 3 - last one's data
-      findAll.shippings[3].type.should.be.equal("delivery");
-      findAll.shippings[3].region.should.be.equal("Out of Taiwan island");
-      findAll.shippings[3].fee.should.be.equal(300);
+
 
       done();
     } catch (e) {
@@ -103,7 +95,13 @@ describe("ShippingService", () => {
       let saved = await ShippingService.saveAll(testDatas);
 
       // this should get a length which should = 5
-      let findAllAgain = await ShippingService.findAll();
+      let testResult = await db.Shipping.find({
+        where:{
+          type: 'delivery',
+          region: 'within 24H Taiwan',
+          fee: 500
+        }
+      });
 
       // console.log('=== 4 findAllAgain ==>\n',findAllAgain);
       // console.log('=== 5 saved ==>\n',saved);
@@ -111,17 +109,10 @@ describe("ShippingService", () => {
       saved.success.should.be.true;
       // part 1 - length check
       findAllFirst.shippings.length.should.be.equal(4);
-      // below temporarily commented for weird await issue by Kuyen.
-      findAllAgain.shippings.length.should.be.equal(5);
-      // part 2 - first one's data
-      findAllAgain.shippings[0].type.should.be.equal("postoffice");
-      findAllAgain.shippings[0].region.should.be.equal("Taiwan island");
-      findAllAgain.shippings[0].fee.should.be.equal(100);
-      // part 3 - last one's data
-      findAllAgain.shippings[4].type.should.be.equal("delivery");
-      findAllAgain.shippings[4].region.should.be.equal("within 24H Taiwan");
-      findAllAgain.shippings[4].fee.should.be.equal(500);
-      // above temporarily commented for weird await issue by Kuyen.
+      // part 2 - check last's data
+      testResult.type.should.be.equal("delivery");
+      testResult.region.should.be.equal("within 24H Taiwan");
+      testResult.fee.should.be.equal(500);
 
       done();
     } catch (e) {

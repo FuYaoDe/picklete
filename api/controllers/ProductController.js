@@ -54,27 +54,29 @@ let ProductController = {
   // list all goods result, include query items
   list: async (req, res) => {
     try {
-      let brands = await db.Brand.findAll();
-
-      let dpts = await db.Dpt.findAll({
-        include: [{
-          model: db.DptSub
-        }],
-        order: ['Dpt.weight', 'DptSubs.weight']
-      });
-
-      let query = req.query;
 
       let limit = await pagination.limit(req);
       let page = await pagination.page(req);
       let offset = await pagination.offset(req);
 
+      let brands = await db.Brand.findAll();
+      let dpts = await DptService.findAll();
+      let dptSubs = await db.DptSub.findAll();
+
+      let query = req.query;
+
       let productsWithCount = await ProductService.productQuery(query, offset, limit);
-      let products = productsWithCount.rows;
+
+      // processing prices with productPriceTransPromotionPrice
+      let now = new Date();
+      productsWithCount = await PromotionService.productPriceTransPromotionPrice(now,productsWithCount);
+
+      let products = productsWithCount.rows || [];
 
       let result = {
         brands,
         dpts,
+        dptSubs,
         query,
         products,
         pageName: "/admin/goods",
@@ -84,11 +86,12 @@ let ProductController = {
         totalRows: productsWithCount.count
       };
 
-      console.log('========= Product Query Parameters =========');
-      console.log('limit = ' + limit);
-      console.log('page = ' + page);
-      console.log('offset = ' + offset);
-      console.log('count = ' + productsWithCount.count);
+      // console.log('========= Product Query Parameters =========');
+      // console.log('limit = ' + limit);
+      // console.log('page = ' + page);
+      // console.log('offset = ' + offset);
+      // console.log('count = ' + productsWithCount.count);
+      // console.log(' products = ' + JSON.stringify(products,null,4));
 
       if (query.responseType && query.responseType.toLowerCase() == 'json') {
         return res.ok(result);
@@ -354,9 +357,11 @@ let ProductController = {
     try {
       let productId = req.param("id");
       let findProduct = await db.Product.findById(productId);
+
       if (!findProduct) {
         throw new Error('找不到商品！ 請確認商品ID！');
       }
+
       findProduct.isPublish = true;
       let updateProduct = await findProduct.save();
       if (!updateProduct){

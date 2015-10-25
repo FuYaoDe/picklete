@@ -6,16 +6,16 @@ block body
     // 館別分類
     .well.control-well.p-30.m-left-2.m-bottom-8
       h3
-        span.label.label-default.p-10-15 館別分類
+        span.label.label-default.p-10-15 #{i18n('brand-classification')}
       .form-horizontal.selectDpt
         .form-group
-          label.col-md-2.control-label 品牌名稱
+          label.col-md-2.control-label #{i18n('brand-name')}
           .col-md-10
             label.radio-inline
               input#brandType(type='radio', name='brandType', value='origin', checked=true)
 
               select.form-control#brandSelect(name='brandId')
-                option(value='') 選擇品牌
+                option(value='') #{i18n('select-brand')}
                 each brand, index in brands
                   option(value='#{brand.id}') #{brand.name}
             label.radio-inline
@@ -25,15 +25,15 @@ block body
               span.glyphicon.glyphicon-info
         // /form-group
         .form-group
-          label.col-md-2.control-label 館別分類
+          label.col-md-2.control-label #{i18n('brand-classification')}
           .col-md-4
             select.form-control(name='dptId[]')
-              option 選擇大館別
+              option #{i18n('select-dpt')}
               each dpt, index in dpts
                 option(value='#{dpt.id}') #{dpt.name}
           .col-md-4
             select.form-control(name='dptSubId[]')
-              option(value='') 選擇小館別
+              option(value='') #{i18n('select-dpt-sub')}
               each dptSub, index in dpts[0].DptSubs
                 option(value='#{dptSub.id}') #{dptSub.name}
           .col-md-2
@@ -43,7 +43,6 @@ block body
               span.glyphicon.glyphicon-plus
         // /form-group
     // /well
-
     // 基本資訊
     .well.control-well.p-30.m-left-2.m-bottom-8
       h3
@@ -138,18 +137,15 @@ block body
             .fileinput-preview.fileinput-exists.border-block-1
             // /fileinput-preview
             .fileinput-btn
-              form(action="/admin/image/upload", method="POST", enctype="multipart/form-data")
-                span.btn.btn-default.btn-sm.btn-file
-                  span.fileinput-new Select image
-                  span.fileinput-exists Change
-                  input.fileInput(type='file', name="uploadfile", data-name='good[0][photos-1]')
-                  input(type='hidden', name="filename", value='good[0][photos-1]')
-                  input(type='hidden', name="width", value='1000')
-                  input(type='hidden', name="height", value='1000')
-                  input(type='hidden', name='good[0][photos-1]', form='goodForm', value='')
-                a.btn.btn-default.btn-sm.fileinput-exists(href='#', data-dismiss='fileinput') Remove
-                // /fileinput-btn
-              // /form
+              span.btn.btn-default.btn-sm.btn-file
+                span.fileinput-new Select image
+                span.fileinput-exists Change
+                input.fileInput(type='file', name="uploadfile", data-name='good[0][photos-1]')
+                input(type='hidden', name="filename", value='good[0][photos-1]')
+                input(type='hidden', name="width", value='1000')
+                input(type='hidden', name="height", value='1000')
+                input(type='hidden', name='good[0][photos-1]', form='goodForm', value='')
+              a.btn.btn-default.btn-sm.fileinput-exists(href='#', data-dismiss='fileinput') Remove
             // /fileinput
         // /col-md-3
         .col-md-3
@@ -163,17 +159,15 @@ block body
             .fileinput-preview.fileinput-exists.border-block-1
             // /fileinput-preview
             .fileinput-btn
-              form(action="/admin/image/upload", method="POST", enctype="multipart/form-data")
-                span.btn.btn-default.btn-sm.btn-file
-                  span.fileinput-new Select image
-                  span.fileinput-exists Change
-                  input.fileInput(type='file', name="uploadfile", data-name='good[0][photos-2]')
-                  input(type='hidden', name="filename", value='good[0][photos-2]')
-                  input(type='hidden', name="width", value='1000')
-                  input(type='hidden', name="height", value='1000')
-                  input(type='hidden', name='good[0][photos-2]', form='goodForm', value='')
-                a.btn.btn-default.btn-sm.fileinput-exists(href='#', data-dismiss='fileinput') Remove
-              // /form
+              span.btn.btn-default.btn-sm.btn-file
+                span.fileinput-new Select image
+                span.fileinput-exists Change
+                input.fileInput(type='file', name="uploadfile", data-name='good[0][photos-2]')
+                input(type='hidden', name="filename", value='good[0][photos-2]')
+                input(type='hidden', name="width", value='1000')
+                input(type='hidden', name="height", value='1000')
+                input(type='hidden', name='good[0][photos-2]', form='goodForm', value='')
+              a.btn.btn-default.btn-sm.fileinput-exists(href='#', data-dismiss='fileinput') Remove
             // /fileinput-btn
           // /fileinput
         // /col-md-3
@@ -268,17 +262,15 @@ block body
             .fileinput-preview.fileinput-exists.border-block-1
             // /fileinput-preview
             .fileinput-btn
-              form(action="/admin/image/upload", method="POST", enctype="multipart/form-data")
-                span.btn.btn-default.btn-sm.btn-file
-                  span.fileinput-new Select image
-                  span.fileinput-exists Change
-                  input.fileInput(type='file', name="uploadfile", data-name='coverPhoto[]')
-                  input(type='hidden', name="filename", value='coverPhoto[]')
-                  input(type='hidden', name="width", value='1000')
-                  input(type='hidden', name="height", value='1000')
-                  input(type='hidden', name='coverPhoto[]', form='goodForm', value='')
-                a.btn.btn-default.btn-sm.fileinput-exists(href='#', data-dismiss='fileinput') Remove
-              // /form
+              span.btn.btn-default.btn-sm.btn-file
+                span.fileinput-new Select image
+                span.fileinput-exists Change
+                input.fileInput(type='file', name="uploadfile", data-name='coverPhoto[]')
+                input(type='hidden', name="filename", value='coverPhoto[]')
+                input(type='hidden', name="width", value='1000')
+                input(type='hidden', name="height", value='1000')
+                input(type='hidden', name='coverPhoto[]', form='goodForm', value='')
+              a.btn.btn-default.btn-sm.fileinput-exists(href='#', data-dismiss='fileinput') Remove
             // /fileinput-btn
           // /fileinput
           a.btn-remove(href='#')

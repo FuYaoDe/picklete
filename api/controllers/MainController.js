@@ -1,15 +1,15 @@
 module.exports = {
-
   index: async (req, res) => {
     try {
       let selectionActivities = await SelectionActiveService.getModel();
       let sliders = await db.Slider.findAll();
       let topicActivities = await TopicActiveService.getModel();
-
+      let flashPromotions = await PromotionService.getModel();
       res.view("main/index", {
         selectionActivities,
         topicActivities,
-        sliders
+        sliders,
+        flashPromotions
       });
 
     } catch (e) {
@@ -17,6 +17,9 @@ module.exports = {
       let {message} = e;
       res.serverError({message, success: false});
     }
-  }
+  },
 
+  login: async (req, res) => {
+    res.view("main/login");
+  }
 }

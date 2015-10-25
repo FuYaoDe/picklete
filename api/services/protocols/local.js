@@ -30,9 +30,9 @@ exports.register = async function(req, res, next) {
     });
 
     let newUser = {
-      username: username,
+      username: newUserParams.username || email,
       email: email,
-      fullName: username,
+      fullName: newUserParams.fullName,
       gender: newUserParams.gender || 'none',
       RoleId: role.id,
       mobile: newUserParams.mobile,
@@ -42,6 +42,7 @@ exports.register = async function(req, res, next) {
       birthDay: newUserParams.birthDay,
       city: newUserParams.city,
       region: newUserParams.region,
+      zipcode: newUserParams.zipcode,
       address: newUserParams.address,
       privacyTermsAgree: newUserParams.privacyTermsAgree || false,
     }
@@ -50,7 +51,7 @@ exports.register = async function(req, res, next) {
 
     let user = await db.User.create(newUser);
 
-    if(newUserParams.like && newUserParams.like.length)
+    if(newUserParams.userLikes && newUserParams.userLikes.length)
       await user.setLikes(newUserParams.userLikes);
 
     var token = crypto.randomBytes(48).toString('base64');
@@ -60,6 +61,17 @@ exports.register = async function(req, res, next) {
       UserId: user.id,
       accessToken: token
     });
+
+    let domain = sails.config.domain || process.env.domain || 'http://localhost:1337';
+    // let link = `${domain}/verification?email=${user.email}`;
+    let link = await UrlHelper.resolve(`verification?email=${user.email}`, true)
+    console.log("verificationLink : ",link);
+
+    let messageConfig = await CustomMailerService.verificationMail(user, link);
+    let message = await db.Message.create(messageConfig);
+    await CustomMailerService.sendMail(message);
+
+    await ShopCodeService.sendWhenRegister({user});
 
     return next(null, user);
 
@@ -124,7 +136,6 @@ exports.login = function(req, identifier, password, next) {
     console.log('== user ==', user);
     db.Passport.findOne({
       where: {
-        protocol: 'local',
         UserId: user.id
       }
     }).then(function(passport) {

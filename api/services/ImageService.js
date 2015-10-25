@@ -33,7 +33,7 @@ module.exports = {
         height: imageResizeConfig.height || 100
       }
       await fse.ensureDirSync(path.join(home, `./.tmp/images`));
-      let result = await gm(resizeConfig.src).resize(resizeConfig.width, resizeConfig.height, "!").writeAsync(resizeConfig.dst);
+      let result = await gm(resizeConfig.src).resize(resizeConfig.width, resizeConfig.height, "!").quality(92).writeAsync(resizeConfig.dst);
       return resizeConfig;
 
     } catch (e) {
@@ -58,12 +58,14 @@ module.exports = {
     if (buffers.length) {
       for (let i in buffers) {
         try {
-          await ImageService.resize({
-            src: buffers[i].fd,
-            dst: buffers[i].fd,
-            width: width,
-            height: height
-          });
+          if(buffers[i].type != 'image/gif'){
+            await ImageService.resize({
+              src: buffers[i].fd,
+              dst: buffers[i].fd,
+              width: width,
+              height: height
+            });
+          }
         } catch (e) {
           console.error(e);
         }

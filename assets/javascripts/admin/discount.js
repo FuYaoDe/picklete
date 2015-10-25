@@ -1,8 +1,8 @@
-$(window).load(function() {
+(function ($) {
 
   // click add a 閃購 button
   $(".btn.btn-green.btn-lg").click(function() {
-    alert('閃購 add button clicked!')
+    // alert('閃購 add button clicked!')
     // var className = $(this).find( "label:first" ).attr('class');
     // var id = $(this).attr('id');
     // var path = "/product/unpublish/" + id;
@@ -13,4 +13,4 @@ $(window).load(function() {
   });
   // end click add a 閃購 button
 
-});
+}(jQuery))

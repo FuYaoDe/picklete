@@ -41,6 +41,7 @@
 
 config/local.js
 config/local.coffee
+config/local.coffee*
 
 
 
@@ -122,4 +123,5 @@ assets/bower/
 db.development.sqlite
 config/init/production.js
 test/unit/resources/resize.jpg
-report
+report/
+coverage/
